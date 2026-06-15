@@ -136,20 +136,30 @@ export function PaymentModal({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — separate layer so clicks outside close the modal */}
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 z-50"
         style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}
-        onClick={e => { if (e.target === e.currentTarget) handleClose() }}
-      >
+        onClick={handleClose}
+        aria-hidden
+      />
+
+      {/* Modal positioner — bottom sheet on mobile, centered on sm+ */}
+      <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center sm:inset-0 sm:items-center sm:p-4">
         <div
-          className="relative w-full max-w-md rounded-2xl overflow-hidden"
+          className="relative w-full max-w-md overflow-y-auto rounded-t-2xl sm:rounded-2xl"
           style={{
+            maxHeight: "92svh",
             background: "linear-gradient(145deg, #080f28, #050b1f)",
             border: "1px solid rgba(255,255,255,0.1)",
             boxShadow: "0 0 80px rgba(212,175,55,0.08), 0 32px 80px rgba(0,0,0,0.6)",
           }}
         >
+          {/* Mobile drag handle */}
+          <div className="flex justify-center pt-2.5 pb-0 sm:hidden">
+            <div className="h-1 w-10 rounded-full" style={{ background: "rgba(255,255,255,0.18)" }} />
+          </div>
+
           {/* Gold top border */}
           <div className="h-[2px]" style={{ background: "linear-gradient(to right, transparent, #D4AF37, #C8102E, transparent)" }} />
 
@@ -175,7 +185,7 @@ export function PaymentModal({
 
           {/* ── Step: select provider ── */}
           {step === "select" && (
-            <div className="px-6 py-5 space-y-5">
+            <div className="px-6 py-5 space-y-5" style={{ paddingBottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}>
               {/* Amount */}
               <div className="rounded-xl px-5 py-4 text-center"
                 style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.18)" }}>
