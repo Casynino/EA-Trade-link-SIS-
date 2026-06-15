@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { signIn } from "next-auth/react"
 import { Globe2, GraduationCap, Briefcase, Eye, EyeOff, Loader2, ArrowRight, CheckCircle2 } from "lucide-react"
 import { registerUser } from "@/actions/auth"
 import { useToast } from "@/components/ui/use-toast"
@@ -68,17 +69,28 @@ function RegisterForm() {
     e.preventDefault()
     if (!selectedPortal) return
     const fd = new FormData(e.currentTarget)
+    const email = fd.get("email") as string
+    const password = fd.get("password") as string
     fd.set("userTypes", JSON.stringify([selectedPortal]))
     setLoading(true)
     try {
       const result = await registerUser(fd)
-      if (result.error) {
+      if (result?.error) {
         toast({ title: "Registration failed", description: result.error, variant: "destructive" })
+        return
+      }
+      // Sign in client-side so the session cookie is set correctly on all browsers/devices
+      const signInResult = await signIn("credentials", { email, password, redirect: false })
+      if (signInResult?.error) {
+        toast({ title: "Account created!", description: "Please sign in to continue." })
+        router.push("/login")
       } else {
         toast({ title: "Account created!", description: "Welcome to EA Trade Link." })
         router.push(redirectTo)
         router.refresh()
       }
+    } catch {
+      toast({ title: "Error", description: "Something went wrong. Please try again.", variant: "destructive" })
     } finally {
       setLoading(false)
     }

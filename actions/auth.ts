@@ -2,7 +2,6 @@
 
 import { db } from "@/lib/db"
 import bcrypt from "bcryptjs"
-import { signIn } from "@/lib/auth"
 
 export async function registerUser(formData: FormData) {
   try {
@@ -20,10 +19,9 @@ export async function registerUser(formData: FormData) {
     try {
       userTypes = JSON.parse(userTypesRaw || "[]")
       if (!Array.isArray(userTypes) || userTypes.length === 0) return { error: "Please select your account type." }
-      // Only allow STUDENT or BUSINESS
       const valid = userTypes.filter(t => ["STUDENT", "BUSINESS"].includes(t))
       if (valid.length === 0) return { error: "Invalid account type. Please select Student or Business." }
-      userTypes = [valid[0]] // enforce single type
+      userTypes = [valid[0]]
     } catch {
       return { error: "Invalid account type selection." }
     }
@@ -44,11 +42,8 @@ export async function registerUser(formData: FormData) {
       },
     })
 
-    await signIn("credentials", { email, password, redirect: false })
-
     return { success: true }
-  } catch (e: any) {
-    if (e?.type === "CredentialsSignin") return { error: "Account created but sign-in failed. Please log in manually." }
+  } catch {
     return { error: "Failed to create account. Please try again." }
   }
 }
