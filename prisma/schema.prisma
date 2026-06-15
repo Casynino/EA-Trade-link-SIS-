@@ -1,0 +1,529 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  phone         String?
+  nationality   String?
+  address       String?
+  // JSON array of UserType strings — e.g. '["STUDENT","BUSINESS"]'
+  userTypes     String    @default("[\"OTHER\"]")
+  role          String    @default("USER")   // USER | ADMIN | SUPER_ADMIN
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts                 Account[]
+  sessions                 Session[]
+  applications             Application[]
+  studyApplications        StudyApplication[]
+  visaApplications         VisaApplication[]
+  scholarshipApplications  ScholarshipApplication[]
+  sentMessages             Message[]        @relation("SentMessages")
+  notifications            Notification[]
+  documents                Document[]
+  activityLogs             ActivityLog[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── Opportunities ────────────────────────────────────────────────────────────
+// The heart of the platform. Admins create all opportunities.
+
+model Opportunity {
+  id               String   @id @default(cuid())
+  type             String   // SCHOLARSHIP | JOB | BUSINESS_VISA | FACTORY_VISIT | PRODUCT_SOURCING | CANTON_FAIR | TRADE_EXHIBITION | CONFERENCE | EXCHANGE
+  title            String
+  organization     String   // university, company, factory, event organizer
+  location         String   @default("China")
+  description      String
+  requirements     String?
+  benefits         String?
+  deadline         DateTime?
+  startDate        DateTime?
+  endDate          DateTime?
+  imageUrl         String?
+  tags             String   @default("[]")  // JSON array
+
+  // Scholarship fields
+  degreeLevel      String?  // BACHELOR | MASTER | PHD | LANGUAGE | CERTIFICATE
+  fieldOfStudy     String?
+  minGpa           Float?
+  coverageType     String?  // Full | Partial
+  tuitionCovered   Boolean  @default(false)
+  livingAllowance  Boolean  @default(false)
+  flightTicket     Boolean  @default(false)
+  slots            Int?
+
+  // Job fields
+  jobType          String?  // FACTORY | SKILLED | INTERNSHIP | SEASONAL
+  salary           String?
+  contractDuration String?
+
+  // Event fields (Canton Fair, exhibitions, conferences)
+  eventDates       String?
+  venue            String?
+  registrationFee  String?
+
+  // Factory visit fields
+  visitDuration    String?
+  groupSizeMax     Int?
+
+  // Universal financial model (JSON: FinancialModel)
+  financialModel    String  @default("{}")
+
+  // Admin-defined application engine config (JSON)
+  requiredDocuments String  @default("[]") // [{id,label,required}]
+  applicationFields String  @default("[]") // [{id,label,type,required,placeholder,options}]
+
+  // Status & visibility
+  isActive         Boolean  @default(true)
+  isFeatured       Boolean  @default(false)
+  targetAudience   String   @default("[]") // JSON: ["STUDENT","JOB_SEEKER","BUSINESS","ALL"]
+
+  createdBy        String?  // admin user id
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  applications Application[]
+
+  @@map("opportunities")
+}
+
+// ─── Applications ─────────────────────────────────────────────────────────────
+// Unified application model for every opportunity type.
+
+model Application {
+  id              String   @id @default(cuid())
+  userId          String
+  opportunityId   String
+  status          String   @default("SUBMITTED")
+  // SUBMITTED | UNDER_REVIEW | DOCUMENTS_REQUIRED | SHORTLISTED |
+  // ACCEPTED | REJECTED | PROCESSING | COMPLETED | CANCELLED
+
+  // Applicant details (snapshot at time of application)
+  coverLetter     String?
+  gpa             Float?
+  degreeLevel     String?
+  fieldOfStudy    String?
+  experience      String?
+  languages       String   @default("[]")  // JSON array
+
+  // Admin fields
+  adminNotes      String?
+  adminAssignee   String?  // admin user id
+  admissionLetter String?  // file URL
+  offerLetter     String?  // file URL
+  rejectionReason String?
+
+  // Fees
+  registrationFee Float?
+  processingFee   Float?
+  feePaid         Boolean  @default(false)
+
+  // SLA tracking (48h rule)
+  submittedAt     DateTime?
+  firstResponseAt DateTime?
+  resolvedAt      DateTime?
+  slaBreached     Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id])
+  documents   Document[]
+  messages    Message[]
+
+  @@map("applications")
+}
+
+// ─── Exchange (standalone — no opportunity needed) ───────────────────────────
+
+// ─── Scholarships ─────────────────────────────────────────────────────────────
+// Rich structured scholarship listings. Admin-managed.
+
+model Scholarship {
+  id                       String   @id @default(cuid())
+  title                    String
+  level                    String   // BACHELOR | MASTER | PHD | LANGUAGE | SHORT
+  country                  String   @default("China")
+  city                     String
+  intake                   String
+  duration                 String
+  language                 String
+  ageRange                 String
+  overview                 String
+  majorsJson               String   @default("[]")   // JSON: string[]
+  financialsJson           String   @default("{}")   // JSON: ScholarshipFinancials
+  requirementsJson         String   @default("{}")   // JSON: ScholarshipRequirements
+  applicationHighlightsJson String  @default("[]")   // JSON: string[]
+  admissionProcessJson     String   @default("[]")   // JSON: string[]
+  tagsJson                 String   @default("[]")   // JSON: string[]
+  slots                    Int?
+  isActive                 Boolean  @default(true)
+  isFeatured               Boolean  @default(false)
+  sortOrder                Int      @default(0)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  scholarshipApplications ScholarshipApplication[]
+
+  @@map("scholarships")
+}
+
+// Tracks which scholarships a user has expressed interest in / applied to
+model ScholarshipApplication {
+  id             String   @id @default(cuid())
+  userId         String
+  scholarshipId  String
+  status         String   @default("INTERESTED")
+  // INTERESTED | APPLIED | UNDER_REVIEW | SHORTLISTED | ACCEPTED | REJECTED
+  notes          String?
+  adminNotes     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scholarship Scholarship @relation(fields: [scholarshipId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scholarshipId])
+  @@map("scholarship_applications")
+}
+
+model ExchangeRate {
+  id        String   @id @default(cuid())
+  rmbToTzs  Float
+  tzsToRmb  Float
+  updatedBy String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("exchange_rates")
+}
+
+model ExchangeRequest {
+  id              String    @id @default(cuid())
+  userId          String?
+  status          String    @default("SUBMITTED")
+  fullName        String
+  phone           String
+  email           String
+  direction       String    // RMB_TO_TZS | TZS_TO_RMB
+  amount          Float
+  currency        String
+  convertedAmount Float?
+  rateUsed        Float?
+  notes           String?
+  adminNotes      String?
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("exchange_requests")
+}
+
+// ─── Documents ────────────────────────────────────────────────────────────────
+
+model Document {
+  id            String    @id @default(cuid())
+  userId        String
+  applicationId String?
+  documentType  String    // PASSPORT | TRANSCRIPT | CERTIFICATE | CV | PHOTO | OTHER
+  fileName      String
+  fileUrl       String
+  fileSize      Int?
+  mimeType      String?
+  isVerified    Boolean   @default(false)
+  notes         String?
+  createdAt     DateTime  @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application Application? @relation(fields: [applicationId], references: [id])
+
+  @@map("documents")
+}
+
+// ─── Messaging ────────────────────────────────────────────────────────────────
+
+model Message {
+  id             String  @id @default(cuid())
+  senderId       String
+  content        String
+  isRead         Boolean @default(false)
+  isAdminMessage Boolean @default(false)
+  applicationId  String?
+  createdAt      DateTime @default(now())
+
+  sender      User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  application Application? @relation(fields: [applicationId], references: [id])
+
+  @@map("messages")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // STATUS_CHANGE | DOCUMENT_REQUIRED | MESSAGE | SLA_WARNING | SYSTEM
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// ─── Study Application (Apply to Study in China — placement service) ─────────
+
+model StudyApplication {
+  id                  String    @id @default(cuid())
+  userId              String
+  status              String    @default("SUBMITTED")
+  // SUBMITTED | UNDER_REVIEW | DOCUMENTS_REQUIRED | SHORTLISTED | MATCHED | ACCEPTED | REJECTED
+
+  // Program choice
+  degreeLevel         String    // BACHELOR | MASTER | PHD | LANGUAGE | SHORT
+  fieldOfStudy        String
+  preferredIntake     String?
+  preferredUniversities String? // optional comma-separated
+  intendedMajor       String?
+
+  // Personal info
+  fullName            String
+  gender              String?   // Male | Female | Other
+  nationality         String
+  passportNumber      String?
+  passportExpiry      String?
+  dateOfBirth         String?
+  phone               String
+  contactEmail        String
+  homeAddress         String?
+
+  // Academic info
+  currentEducation    String
+  institutionName     String?
+  graduationYear      String?
+  gpa                 String?
+  englishProficiency  String?   // e.g. IELTS 6.5 | None
+  chineseProficiency  String?   // e.g. HSK 3 | None
+  languageLevel       String?   // legacy — kept for compatibility
+
+  // Documents metadata (JSON array of {docType, label, ready, fileName})
+  documentsJson       String    @default("[]")
+
+  // Admin fields
+  adminNotes          String?
+  adminAssignee       String?
+  matchedScholarships String    @default("[]") // JSON: array of opportunity IDs
+  matchedUniversities String    @default("[]") // JSON: array of university names
+  admissionLetter     String?   // file URL
+  preAdmissionOffer   String?   // file URL
+
+  // Fees
+  registrationFee     Float?
+  processingFee       Float?
+  feePaid             Boolean   @default(false)
+
+  // SLA (48h rule)
+  submittedAt         DateTime?
+  firstResponseAt     DateTime?
+  slaBreached         Boolean   @default(false)
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents           StudyDocument[]
+  messages            StudyMessage[]
+
+  @@map("study_applications")
+}
+
+model StudyDocument {
+  id                  String          @id @default(cuid())
+  studyApplicationId  String
+  documentType        String          // PASSPORT | TRANSCRIPT | CERTIFICATE | CV | STUDY_PLAN | RECOMMENDATION | LANGUAGE | OTHER
+  fileName            String
+  fileUrl             String
+  fileSize            Int?
+  mimeType            String?
+  isVerified          Boolean         @default(false)
+  notes               String?
+  createdAt           DateTime        @default(now())
+
+  application         StudyApplication @relation(fields: [studyApplicationId], references: [id], onDelete: Cascade)
+
+  @@map("study_documents")
+}
+
+model StudyMessage {
+  id                  String          @id @default(cuid())
+  studyApplicationId  String
+  senderId            String
+  content             String
+  isAdminMessage      Boolean         @default(false)
+  isRead              Boolean         @default(false)
+  createdAt           DateTime        @default(now())
+
+  application         StudyApplication @relation(fields: [studyApplicationId], references: [id], onDelete: Cascade)
+
+  @@map("study_messages")
+}
+
+// ─── Visa Application (Business Visa — direct service) ────────────────────────
+
+model VisaApplication {
+  id                  String    @id @default(cuid())
+  userId              String
+  status              String    @default("SUBMITTED")
+  // SUBMITTED | UNDER_REVIEW | DOCUMENTS_REQUIRED | PROCESSING | APPROVED | REJECTED
+
+  // Personal info
+  fullName            String
+  nationality         String
+  passportNumber      String
+  passportExpiry      String?
+  dateOfBirth         String?
+  phone               String
+  contactEmail        String
+
+  // Company info
+  companyName         String?
+  companyAddress      String?
+  jobTitle            String?
+  companyRegNumber    String?
+  tinNumber           String?
+  requiresAuthLetter  Boolean   @default(false)
+
+  // Travel info
+  purpose             String
+  travelDates         String?
+  stayDuration        String?
+  previousVisits      String?   // JSON or plain text
+
+  // Admin
+  adminNotes          String?
+  adminAssignee       String?
+  processingFee       Float?
+  feePaid             Boolean   @default(false)
+
+  // SLA
+  submittedAt         DateTime?
+  firstResponseAt     DateTime?
+  slaBreached         Boolean   @default(false)
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents           VisaDocument[]
+  messages            VisaMessage[]
+
+  @@map("visa_applications")
+}
+
+model VisaDocument {
+  id                  String          @id @default(cuid())
+  visaApplicationId   String
+  documentType        String          // PASSPORT | INVITATION_LETTER | COMPANY_DOCS | FLIGHT_ITINERARY | BANK_STATEMENT | OTHER
+  fileName            String
+  fileUrl             String
+  fileSize            Int?
+  mimeType            String?
+  isVerified          Boolean         @default(false)
+  notes               String?
+  createdAt           DateTime        @default(now())
+
+  application         VisaApplication @relation(fields: [visaApplicationId], references: [id], onDelete: Cascade)
+
+  @@map("visa_documents")
+}
+
+model VisaMessage {
+  id                  String          @id @default(cuid())
+  visaApplicationId   String
+  senderId            String
+  content             String
+  isAdminMessage      Boolean         @default(false)
+  isRead              Boolean         @default(false)
+  createdAt           DateTime        @default(now())
+
+  application         VisaApplication @relation(fields: [visaApplicationId], references: [id], onDelete: Cascade)
+
+  @@map("visa_messages")
+}
+
+// ─── Activity Logs ────────────────────────────────────────────────────────────
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("activity_logs")
+}

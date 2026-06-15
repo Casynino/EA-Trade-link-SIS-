@@ -1,0 +1,287 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design tokens — dark premium system ───────────────────────────────────── */
+@layer base {
+  :root {
+    /* Core palette */
+    --background:         228 66% 6%;     /* #050918 deep navy */
+    --foreground:         210 40% 96%;    /* near white */
+    --card:               228 55% 9%;     /* #0a0f22 slightly lighter */
+    --card-foreground:    210 40% 96%;
+    --popover:            228 50% 10%;
+    --popover-foreground: 210 40% 96%;
+    --primary:            43 59% 52%;     /* #D4AF37 gold */
+    --primary-foreground: 228 66% 6%;
+    --secondary:          220 30% 13%;
+    --secondary-foreground: 210 40% 90%;
+    --muted:              220 28% 13%;
+    --muted-foreground:   215 20% 52%;
+    --accent:             220 28% 13%;
+    --accent-foreground:  210 40% 96%;
+    --destructive:        0 72% 55%;
+    --destructive-foreground: 210 40% 98%;
+    --border:             220 18% 15%;    /* subtle dark border */
+    --input:              220 22% 13%;
+    --ring:               43 59% 52%;
+    --radius:             0.75rem;
+
+    /* Elevation shadows — dark-aware */
+    --shadow-xs: 0 1px 2px 0 rgba(0,0,0,0.4);
+    --shadow-sm: 0 1px 3px 0 rgba(0,0,0,0.5), 0 1px 2px -1px rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.5), 0 2px 4px -2px rgba(0,0,0,0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.55), 0 4px 6px -4px rgba(0,0,0,0.3);
+    --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.6), 0 8px 10px -6px rgba(0,0,0,0.3);
+
+    /* EA Brand */
+    --ea-red:  #C8102E;
+    --ea-gold: #D4AF37;
+    --ea-navy: #05091a;
+  }
+}
+
+/* ── Base resets ───────────────────────────────────────────────────────────── */
+@layer base {
+  * { @apply border-border; }
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv11", "ss01";
+  }
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
+
+/* ── App shell background ──────────────────────────────────────────────────── */
+.ea-app-bg {
+  background-color: #05091a;
+  background-image:
+    radial-gradient(ellipse 70% 50% at 0% 0%,   rgba(200,16,46,0.04)  0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(212,175,55,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 60% at 50% 0%,   rgba(96,165,250,0.02) 0%, transparent 60%);
+}
+
+/* ── Sidebar (dark premium) ────────────────────────────────────────────────── */
+.ea-sidebar {
+  background: linear-gradient(180deg, #08102e 0%, #050918 60%, #040813 100%);
+  border-right: 1px solid rgba(255,255,255,0.05);
+}
+
+.ea-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.5);
+  transition: background 0.14s ease, color 0.14s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ea-nav-item:hover {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.85);
+}
+.ea-nav-item.active {
+  background: rgba(212,175,55,0.12);
+  color: #D4AF37;
+  font-weight: 600;
+}
+.ea-nav-item.active svg { color: #D4AF37 !important; }
+
+.ea-nav-section {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+  padding: 4px 10px;
+  margin-top: 10px;
+}
+
+/* ── Premium glassmorphism card ────────────────────────────────────────────── */
+.ea-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.3);
+  backdrop-filter: blur(8px);
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.ea-card:hover {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.4);
+  border-color: rgba(255,255,255,0.12);
+}
+.ea-card-lift:hover {
+  transform: translateY(-2px);
+  border-color: rgba(212,175,55,0.2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 16px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.08);
+}
+
+/* ── Stat card ─────────────────────────────────────────────────────────────── */
+.ea-stat {
+  @apply ea-card flex items-center gap-4;
+  padding: 20px;
+}
+.ea-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+.ea-stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: rgba(255,255,255,0.9);
+}
+.ea-stat-label {
+  font-size: 11.5px;
+  color: rgba(255,255,255,0.38);
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+/* ── Page layout helpers ───────────────────────────────────────────────────── */
+.ea-page        { max-width: 1280px; margin: 0 auto; padding: 28px 24px; }
+.ea-page-sm     { max-width: 860px;  margin: 0 auto; padding: 28px 24px; }
+.ea-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.ea-page-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: rgba(255,255,255,0.92);
+}
+.ea-page-sub {
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.35);
+  margin-top: 3px;
+}
+.ea-section-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(212,175,55,0.7);
+  margin-bottom: 4px;
+}
+
+/* ── Table system ──────────────────────────────────────────────────────────── */
+.ea-table { width: 100%; font-size: 13px; }
+.ea-table thead { border-bottom: 1px solid rgba(255,255,255,0.06); }
+.ea-table th {
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.3);
+}
+.ea-table td {
+  padding: 13px 16px;
+  color: rgba(255,255,255,0.75);
+}
+.ea-table tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.12s;
+}
+.ea-table tbody tr:last-child { border-bottom: 0; }
+.ea-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+
+/* ── Status badges — dark premium ──────────────────────────────────────────── */
+.ea-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ea-badge-blue   { background: rgba(96,165,250,0.12);  color: #60a5fa; border: 1px solid rgba(96,165,250,0.2);  }
+.ea-badge-green  { background: rgba(52,211,153,0.12);  color: #34d399; border: 1px solid rgba(52,211,153,0.2);  }
+.ea-badge-amber  { background: rgba(251,191,36,0.12);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.2);  }
+.ea-badge-red    { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.2); }
+.ea-badge-purple { background: rgba(192,132,252,0.12); color: #c084fc; border: 1px solid rgba(192,132,252,0.2); }
+.ea-badge-orange { background: rgba(251,146,60,0.12);  color: #fb923c; border: 1px solid rgba(251,146,60,0.2);  }
+.ea-badge-teal   { background: rgba(45,212,191,0.12);  color: #2dd4bf; border: 1px solid rgba(45,212,191,0.2);  }
+.ea-badge-gray   { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.45); border: 1px solid rgba(255,255,255,0.1); }
+
+/* ── Page entry animation ──────────────────────────────────────────────────── */
+@keyframes ea-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ea-animate-in {
+  animation: ea-fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.ea-animate-in-delay-1 { animation-delay: 0.06s; }
+.ea-animate-in-delay-2 { animation-delay: 0.12s; }
+.ea-animate-in-delay-3 { animation-delay: 0.18s; }
+
+/* ── Glow pulse (for active indicators) ───────────────────────────────────── */
+@keyframes ea-glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
+}
+.ea-glow-pulse { animation: ea-glow-pulse 2s ease-in-out infinite; }
+
+/* ── Loading skeleton — dark ───────────────────────────────────────────────── */
+@keyframes ea-shimmer {
+  0%   { background-position: -800px 0; }
+  100% { background-position:  800px 0; }
+}
+.ea-skeleton {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.04) 75%
+  );
+  background-size: 800px 100%;
+  animation: ea-shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ── Divider ───────────────────────────────────────────────────────────────── */
+.ea-divider { height: 1px; background: rgba(255,255,255,0.06); }
+
+/* ── Focus ring ────────────────────────────────────────────────────────────── */
+.ea-focus { @apply focus:outline-none focus:ring-2 focus:ring-yellow-400/30 focus:border-yellow-400/40; }
+
+/* ── Button transitions ────────────────────────────────────────────────────── */
+button, a { transition-property: color, background-color, border-color, box-shadow, transform, opacity; transition-duration: 0.15s; }
+
+/* ── Glass utility ─────────────────────────────────────────────────────────── */
+.ea-glass {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.ea-glass-strong {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
