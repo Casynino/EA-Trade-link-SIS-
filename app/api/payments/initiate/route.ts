@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { createDeposit, normalizeTanzaniaPhone, NtzsApiError } from "@/lib/ntzs"
+import { createDeposit, createOrGetNtzsUser, normalizeTanzaniaPhone, NtzsApiError } from "@/lib/ntzs"
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,12 +49,30 @@ export async function POST(req: NextRequest) {
 
     const normalizedPhone = phone ? normalizeTanzaniaPhone(phone) : undefined
 
-    // Call NTZS API to create the deposit
-    const deposit = await createDeposit({
-      amount,
-      method,
-      provider: provider || undefined,
+    // Look up the user's email (required by NTZS to provision their wallet)
+    const userRecord = await db.user.findUnique({
+      where: { id: userId },
+      select: { email: true, name: true },
+    })
+    if (!userRecord) {
+      return NextResponse.json({ error: "User not found" }, { status: 400 })
+    }
+
+    // Create or retrieve the payer's nTZS wallet (idempotent)
+    const ntzsUser = await createOrGetNtzsUser({
+      externalId: userId,
+      email: userRecord.email,
+      name: userRecord.name ?? undefined,
       phone: normalizedPhone,
+    })
+
+    // Call NTZS API to create the deposit with correct field names
+    const deposit = await createDeposit({
+      ntzsUserId:        ntzsUser.id,
+      amountTzs:         amount,
+      paymentMethod:     method,
+      provider:          provider || undefined,
+      phoneNumber:       normalizedPhone,
       collectToTreasury: true,
       metadata: {
         applicationId,

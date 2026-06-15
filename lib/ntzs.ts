@@ -34,24 +34,46 @@ export class NtzsApiError extends Error {
   }
 }
 
+// ── User Management ───────────────────────────────────────────────────────────
+
+export interface NtzsUser {
+  id: string
+  walletAddress: string
+  balance?: number
+}
+
+/** Create or retrieve an nTZS user. Idempotent — same externalId returns the same user. */
+export async function createOrGetNtzsUser(params: {
+  externalId: string  // our app's userId
+  email: string
+  name?: string
+  phone?: string
+}): Promise<NtzsUser> {
+  return ntzsFetch("/api/v1/users", {
+    method: "POST",
+    body: JSON.stringify(params),
+  })
+}
+
 // ── Deposits ─────────────────────────────────────────────────────────────────
 
 export interface DepositParams {
-  amount: number               // TZS (minimum 500)
-  method: "mobile_money" | "card"
+  ntzsUserId: string           // nTZS user ID (from createOrGetNtzsUser)
+  amountTzs: number            // TZS (minimum 500)
+  paymentMethod: "mobile_money" | "card"
   provider?: string            // Vodacom | Airtel | Tigo | Halotel | TTCL | Yass
-  phone?: string               // E.164 format e.g. +255712345678
+  phoneNumber?: string         // E.164 format e.g. +255712345678
   collectToTreasury?: boolean  // true → funds go to your treasury wallet
   metadata?: Record<string, string>
 }
 
 export interface DepositResponse {
   id: string
-  status: string   // pending | completed | failed
-  amount: number
-  method: string
+  status: string   // submitted | completed | failed
+  amountTzs?: number
+  paymentMethod?: string
   provider?: string
-  phone?: string
+  phoneNumber?: string
   paymentUrl?: string  // card payments only
   createdAt: string
 }
@@ -60,12 +82,13 @@ export async function createDeposit(params: DepositParams): Promise<DepositRespo
   return ntzsFetch("/api/v1/deposits", {
     method: "POST",
     body: JSON.stringify({
-      amount: params.amount,
-      method: params.method,
-      provider: params.provider,
-      phone: params.phone,
+      userId:            params.ntzsUserId,
+      amountTzs:         params.amountTzs,
+      paymentMethod:     params.paymentMethod,
+      provider:          params.provider,
+      phoneNumber:       params.phoneNumber,
       collectToTreasury: params.collectToTreasury ?? true,
-      metadata: params.metadata,
+      metadata:          params.metadata,
     }),
   })
 }
