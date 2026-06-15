@@ -36,6 +36,7 @@ model User {
   notifications            Notification[]
   documents                Document[]
   activityLogs             ActivityLog[]
+  payments                 Payment[]
 
   @@map("users")
 }
@@ -510,6 +511,31 @@ model VisaMessage {
   application         VisaApplication @relation(fields: [visaApplicationId], references: [id], onDelete: Cascade)
 
   @@map("visa_messages")
+}
+
+// ─── Payments ─────────────────────────────────────────────────────────────────
+// Tracks every payment attempt via NTZS mobile money / card
+
+model Payment {
+  id              String    @id @default(cuid())
+  userId          String
+  applicationId   String?
+  applicationType String?   // application | visa | study
+  amount          Float     // TZS amount
+  status          String    @default("PENDING") // PENDING | COMPLETED | FAILED | EXPIRED
+  method          String?   // mobile_money | card
+  provider        String?   // Vodacom | Airtel | Tigo | Halotel | TTCL | Yass
+  phone           String?
+  ntzsDepositId   String?   @unique
+  cardUrl         String?   // redirect URL for card payments
+  description     String?
+  paidAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
 }
 
 // ─── Activity Logs ────────────────────────────────────────────────────────────

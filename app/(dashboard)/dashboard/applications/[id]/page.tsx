@@ -9,6 +9,7 @@ import {
   User2, Hash, CalendarDays, MapPin,
 } from "lucide-react"
 import { MessageThread } from "./message-thread"
+import { PayNowButton } from "@/components/payments/pay-now-button"
 
 export const dynamic = "force-dynamic"
 
@@ -252,7 +253,10 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
   const session = await auth()
   if (!session?.user) redirect("/login")
 
-  const app = await findApp(id, session.user.id)
+  const [app, userPhone] = await Promise.all([
+    findApp(id, session.user.id),
+    db.user.findUnique({ where: { id: session.user.id }, select: { phone: true } }),
+  ])
   if (!app) notFound()
 
   const st = STATUS_META[app.status] ?? STATUS_META.SUBMITTED
@@ -604,8 +608,8 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
                 <p className="text-sm font-black" style={{ color: "#D4AF37" }}>Payment Required — Secure Your Spot</p>
               </div>
               <p className="text-xs leading-relaxed" style={{ color: "rgba(212,175,55,0.75)" }}>
-                To secure your placement and begin official processing, please complete the required payment.
-                Contact our team via WhatsApp or M-Pesa using the details below.
+                Pay securely via mobile money (Vodacom, Airtel, Tigo, HaloPesa) directly from your phone.
+                Your spot is reserved once payment is confirmed.
               </p>
             </div>
             <div className="px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
@@ -613,14 +617,13 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
                 <p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>Amount Due</p>
                 <p className="text-2xl font-black" style={{ color: "#D4AF37" }}>TZS {totalFee.toLocaleString()}</p>
               </div>
-              <div className="flex flex-col gap-2 items-end">
-                <a href="https://wa.me/255672037939" target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all hover:opacity-90"
-                  style={{ background: "rgba(52,211,153,0.15)", color: "#34d399", border: "1px solid rgba(52,211,153,0.3)" }}>
-                  WhatsApp Payment
-                </a>
-                <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.25)" }}>Or call: +255 652 026 656</p>
-              </div>
+              <PayNowButton
+                applicationId={app.id}
+                applicationType={app.modelType}
+                totalFee={totalFee}
+                defaultPhone={userPhone?.phone ?? ""}
+                variant="banner"
+              />
             </div>
           </div>
         )}
@@ -938,10 +941,16 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
                         </span>
                       )}
                     </div>
-                    {!app.feePaid && (
-                      <p className="mt-3 text-[10px] leading-relaxed" style={{ color: "rgba(255,255,255,0.25)" }}>
-                        Contact our office to complete your payment via M-Pesa or bank transfer.
-                      </p>
+                    {!app.feePaid && isPaymentPending && (
+                      <div className="mt-3">
+                        <PayNowButton
+                          applicationId={app.id}
+                          applicationType={app.modelType}
+                          totalFee={totalFee}
+                          defaultPhone={userPhone?.phone ?? ""}
+                          variant="sidebar"
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
