@@ -340,13 +340,6 @@ function LoginForm() {
           </Link>
         </div>
 
-        <div className="mt-5 rounded-xl p-4 text-xs space-y-1"
-          style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.35)" }}>
-          <p className="font-semibold mb-2" style={{ color: "rgba(255,255,255,0.5)" }}>Demo accounts:</p>
-          <p>🎓 Student: <span style={{ color: "rgba(255,255,255,0.6)" }}>student@demo.com / student123!</span></p>
-          <p>💼 Business: <span style={{ color: "rgba(255,255,255,0.6)" }}>business@demo.com / business123!</span></p>
-          <p>🔐 Admin: <span style={{ color: "rgba(255,255,255,0.6)" }}>admin@eatradelink.com / admin123!</span></p>
-        </div>
       </div>
     </div>
   )
