@@ -38,7 +38,7 @@ export async function GET(
         const deposit = await getDeposit(payment.ntzsDepositId)
         const ntzsStatus = deposit.status?.toLowerCase()
 
-        if (ntzsStatus === "completed" || ntzsStatus === "successful" || ntzsStatus === "success") {
+        if (ntzsStatus === "completed" || ntzsStatus === "successful" || ntzsStatus === "success" || ntzsStatus === "minted") {
           const now = new Date()
 
           // Mark payment completed in DB

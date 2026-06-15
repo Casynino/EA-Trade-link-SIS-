@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
         const deposit = await getDeposit(existing.ntzsDepositId)
         const ntzsStatus = deposit.status?.toLowerCase()
 
-        if (ntzsStatus === "completed" || ntzsStatus === "successful" || ntzsStatus === "success") {
+        if (ntzsStatus === "completed" || ntzsStatus === "successful" || ntzsStatus === "success" || ntzsStatus === "minted") {
           // Already paid — mark complete and return so the modal shows success
           await db.payment.update({ where: { id: existing.id }, data: { status: "COMPLETED", paidAt: new Date() } })
           return NextResponse.json({ paymentId: existing.id, depositId: existing.ntzsDepositId, status: "COMPLETED" })
