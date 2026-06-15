@@ -49,10 +49,13 @@ export async function createOrGetNtzsUser(params: {
   name?: string
   phone?: string
 }): Promise<NtzsUser> {
-  return ntzsFetch("/api/v1/users", {
+  const body = await ntzsFetch("/api/v1/users", {
     method: "POST",
     body: JSON.stringify(params),
   })
+  // Handle both flat { id, ... } and nested { data: { id, ... } } response shapes
+  const user = body?.data ?? body?.user ?? body
+  return user as NtzsUser
 }
 
 // ── Deposits ─────────────────────────────────────────────────────────────────
