@@ -1,8 +1,6 @@
 import { auth } from "@/lib/auth"
 import { NextRequest, NextResponse } from "next/server"
-import { UTApi } from "uploadthing/server"
-
-const utapi = new UTApi()
+import { put } from "@vercel/blob"
 
 const MAX_SIZE = 16 * 1024 * 1024 // 16 MB
 const ALLOWED_TYPES = new Set([
@@ -37,27 +35,20 @@ export async function POST(req: NextRequest) {
 
   if (!ALLOWED_TYPES.has(file.type)) {
     return NextResponse.json(
-      { error: `File type not allowed. Accepted: PDF, JPG, PNG, WEBP` },
+      { error: "File type not allowed. Accepted: PDF, JPG, PNG, WEBP" },
       { status: 415 }
     )
   }
 
   try {
-    const response = await utapi.uploadFiles(file)
+    const blob = await put(file.name, file, {
+      access: "public",
+      addRandomSuffix: true,
+    })
 
-    if (response.error) {
-      console.error("UploadThing error:", response.error)
-      return NextResponse.json(
-        { error: "Upload failed. Please check your connection and try again." },
-        { status: 500 }
-      )
-    }
-
-    const url = response.data.ufsUrl ?? response.data.url
-
-    return NextResponse.json({ url, name: file.name })
+    return NextResponse.json({ url: blob.url, name: file.name })
   } catch (err) {
-    console.error("Upload route error:", err)
+    console.error("Blob upload error:", err)
     return NextResponse.json(
       { error: "Upload failed. Please try again." },
       { status: 500 }

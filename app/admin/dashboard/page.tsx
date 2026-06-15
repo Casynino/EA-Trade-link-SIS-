@@ -57,25 +57,31 @@ export default async function AdminDashboardPage() {
     }),
     db.application.groupBy({ by: ["status"], _count: true }),
     db.application.groupBy({ by: ["opportunityId"], _count: true }),
-    db.$queryRaw<[{ count: bigint }]>`SELECT COUNT(*) as count FROM scholarships WHERE isActive = 1`,
-    db.$queryRaw<[{ count: bigint }]>`SELECT COUNT(*) as count FROM scholarship_applications`,
+    db.scholarship.count({ where: { isActive: true } }),
+    db.scholarshipApplication.count(),
     db.studyApplication.count(),
     db.visaApplication.count(),
   ])
 
-  const scholarshipsCount = Number((totalScholarships as [{ count: bigint }])[0]?.count ?? 0)
-  const scholarshipAppsCount = Number((totalScholarshipApps as [{ count: bigint }])[0]?.count ?? 0)
+  const scholarshipsCount = totalScholarships
+  const scholarshipAppsCount = totalScholarshipApps
   const allApplicationsTotal = totalApplications + scholarshipAppsCount + totalStudyApps + totalVisaApps
 
-  // Per-opportunity type breakdown
-  const oppTypeRows = await db.$queryRaw<{ type: string; count: bigint }[]>`
-    SELECT o.type, COUNT(a.id) as count
-    FROM opportunities o
-    LEFT JOIN applications a ON a.opportunityId = o.id
-    GROUP BY o.type
-    HAVING count > 0
-  `
-  const byTypeData = oppTypeRows.map((r) => ({ type: r.type, count: Number(r.count) }))
+  // Per-opportunity type breakdown — use Prisma API (no raw SQL)
+  const appsByOpp = await db.application.groupBy({
+    by: ["opportunityId"],
+    _count: { id: true },
+  })
+  const oppIds = appsByOpp.map(r => r.opportunityId)
+  const oppsWithTypes = oppIds.length > 0
+    ? await db.opportunity.findMany({ where: { id: { in: oppIds } }, select: { id: true, type: true } })
+    : []
+  const typeCountMap: Record<string, number> = {}
+  for (const row of appsByOpp) {
+    const opp = oppsWithTypes.find(o => o.id === row.opportunityId)
+    if (opp) typeCountMap[opp.type] = (typeCountMap[opp.type] ?? 0) + row._count.id
+  }
+  const byTypeData = Object.entries(typeCountMap).map(([type, count]) => ({ type, count }))
 
   // Last 7 days trend
   const sevenDaysAgo = new Date(Date.now() - 7 * 86400000)
