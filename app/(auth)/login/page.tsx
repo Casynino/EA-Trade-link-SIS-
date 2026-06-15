@@ -46,6 +46,7 @@ function LoginForm() {
   const params = useSearchParams()
   const { toast } = useToast()
 
+  const isAdminMode = params.get("type") === "admin"
   const callbackUrl = params.get("callbackUrl") || params.get("redirect") || ""
 
   const [accountType, setAccountType] = useState<"STUDENT" | "BUSINESS" | "">("")
@@ -58,7 +59,8 @@ function LoginForm() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email || !password || !accountType) return
+    if (!email || !password) return
+    if (!isAdminMode && !accountType) return
     setLoading(true)
     try {
       const result = await signIn("credentials", { email, password, redirect: false })
@@ -67,20 +69,17 @@ function LoginForm() {
         return
       }
 
-      // Fetch session to verify account type matches
       const sessionRes = await fetch("/api/auth/session")
       const session = await sessionRes.json()
       const actualType: string = session?.user?.accountType ?? "STUDENT"
 
-      // Admin can always proceed
       if (actualType === "ADMIN") {
         router.push("/admin/dashboard")
         router.refresh()
         return
       }
 
-      // Mismatch warning — still redirect but inform the user
-      if (actualType !== accountType) {
+      if (!isAdminMode && actualType !== accountType) {
         const actualPortal = PORTALS.find(p => p.value === actualType)
         toast({
           title: `${actualPortal?.emoji ?? ""} Logged in as ${actualPortal?.label ?? actualType}`,
@@ -88,7 +87,6 @@ function LoginForm() {
         })
       }
 
-      // Redirect to callbackUrl or to the correct typed dashboard
       const dest = callbackUrl || "/dashboard"
       router.push(dest)
       router.refresh()
@@ -105,11 +103,107 @@ function LoginForm() {
     color: "white",
   } as React.CSSProperties
 
+  // ── Admin login view ────────────────────────────────────────────────────────
+  if (isAdminMode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="relative w-full max-w-sm">
+          <div className="text-center mb-8">
+            <Link href="/" className="inline-flex items-center gap-2.5 justify-center">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl shadow-lg"
+                style={{ background: "linear-gradient(135deg,#C8102E,#0F2557)" }}>
+                <Globe2 className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-left leading-none">
+                <p className="font-bold text-white text-sm">EA Trade Link</p>
+                <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>Admin Portal</p>
+              </div>
+            </Link>
+          </div>
+
+          <div className="mb-6 text-center">
+            <div className="inline-flex items-center gap-2 rounded-2xl px-4 py-2 mb-3"
+              style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)" }}>
+              <Shield className="h-4 w-4" style={{ color: "#f87171" }} />
+              <span className="text-sm font-bold" style={{ color: "#f87171" }}>Admin Access</span>
+            </div>
+            <h2 className="text-2xl font-black text-white mb-1">Admin Login</h2>
+            <p className="text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
+              Restricted to authorized administrators only.
+            </p>
+          </div>
+
+          <form onSubmit={onSubmit} className="space-y-4"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(248,113,113,0.15)",
+              borderRadius: "1.25rem",
+              padding: "1.5rem",
+            }}>
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: "rgba(255,255,255,0.7)" }}>
+                Admin Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="admin@eatradelink.com"
+                required
+                className="w-full rounded-xl px-4 py-2.5 text-sm outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: "rgba(255,255,255,0.7)" }}>
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Admin password"
+                  required
+                  className="w-full rounded-xl px-4 py-2.5 pr-10 text-sm outline-none"
+                  style={inputStyle}
+                />
+                <button type="button" onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  style={{ color: "rgba(255,255,255,0.35)" }}>
+                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-black transition-all disabled:opacity-40"
+              style={{ background: "#f87171", color: "#fff" }}
+            >
+              {loading
+                ? <><Loader2 className="h-4 w-4 animate-spin" />Signing in…</>
+                : <><Shield className="h-4 w-4" />Sign In as Admin <ArrowRight className="h-4 w-4" /></>}
+            </button>
+          </form>
+
+          <div className="mt-4 text-center">
+            <Link href="/login" className="text-xs transition-colors"
+              style={{ color: "rgba(255,255,255,0.3)" }}
+              onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.6)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.3)")}>
+              ← Back to user login
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Regular user login view ─────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-
       <div className="relative w-full max-w-sm">
-        {/* Brand */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 justify-center">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl shadow-lg"
@@ -130,7 +224,6 @@ function LoginForm() {
           </p>
         </div>
 
-        {/* Account type selector */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           {PORTALS.map(p => {
             const active = accountType === p.value
@@ -164,7 +257,6 @@ function LoginForm() {
           })}
         </div>
 
-        {/* Login form */}
         <form onSubmit={onSubmit} className="space-y-4"
           style={{
             background: "rgba(255,255,255,0.03)",
@@ -172,8 +264,6 @@ function LoginForm() {
             borderRadius: "1.25rem",
             padding: "1.5rem",
           }}>
-
-          {/* Portal indicator */}
           {selectedPortal && (
             <div className="flex items-center gap-2 rounded-xl px-3 py-2 mb-1"
               style={{ background: selectedPortal.bg, border: `1px solid ${selectedPortal.border}` }}>
@@ -183,7 +273,6 @@ function LoginForm() {
               </span>
             </div>
           )}
-
           <div>
             <label className="block text-xs font-semibold mb-1.5" style={{ color: "rgba(255,255,255,0.7)" }}>
               Email Address
@@ -198,7 +287,6 @@ function LoginForm() {
               style={inputStyle}
             />
           </div>
-
           <div>
             <label className="block text-xs font-semibold mb-1.5" style={{ color: "rgba(255,255,255,0.7)" }}>
               Password
@@ -213,17 +301,13 @@ function LoginForm() {
                 className="w-full rounded-xl px-4 py-2.5 pr-10 text-sm outline-none transition-all"
                 style={inputStyle}
               />
-              <button
-                type="button"
-                onClick={() => setShowPw(!showPw)}
+              <button type="button" onClick={() => setShowPw(!showPw)}
                 className="absolute right-3 top-1/2 -translate-y-1/2"
-                style={{ color: "rgba(255,255,255,0.35)" }}
-              >
+                style={{ color: "rgba(255,255,255,0.35)" }}>
                 {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
-
           <button
             type="submit"
             disabled={loading || !accountType}
@@ -246,7 +330,6 @@ function LoginForm() {
           </Link>
         </p>
 
-        {/* Admin link */}
         <div className="mt-4 text-center">
           <Link href="/login?type=admin"
             className="inline-flex items-center gap-1.5 text-xs transition-colors"
@@ -257,7 +340,6 @@ function LoginForm() {
           </Link>
         </div>
 
-        {/* Demo credentials */}
         <div className="mt-5 rounded-xl p-4 text-xs space-y-1"
           style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.35)" }}>
           <p className="font-semibold mb-2" style={{ color: "rgba(255,255,255,0.5)" }}>Demo accounts:</p>

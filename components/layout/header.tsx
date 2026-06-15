@@ -127,7 +127,7 @@ export function Header({ userName, userImage }: { userName: string; userImage: s
             <DropdownMenuSeparator />
 
             <DropdownMenuItem
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={() => signOut({ callbackUrl: `${window.location.origin}/login` })}
               className="cursor-pointer text-destructive focus:text-destructive rounded-lg text-[13px]"
             >
               <LogOut className="mr-2 h-3.5 w-3.5" />Sign out
