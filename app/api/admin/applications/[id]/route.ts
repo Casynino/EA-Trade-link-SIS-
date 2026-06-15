@@ -85,6 +85,10 @@ export async function PATCH(
     updated = await db.visaApplication.update({ where: { id }, data: update })
 
   } else if (model === "study") {
+    if (body.registrationFee != null)   update.registrationFee  = body.registrationFee
+    if (body.processingFee != null)     update.processingFee    = body.processingFee
+    if (body.admissionLetter != null)   update.admissionLetter  = body.admissionLetter
+    if (body.feePaid != null)           update.feePaid          = body.feePaid
     updated = await db.studyApplication.update({ where: { id }, data: update })
 
   } else if (model === "scholarship") {

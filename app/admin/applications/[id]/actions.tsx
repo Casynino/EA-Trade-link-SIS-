@@ -114,12 +114,11 @@ export function AdminApplicationActions({
       status,
       adminNotes: notes,
     }
-    if (status === "REJECTED")  body.rejectionReason = rejectionReason || "Application unsuccessful at this stage."
-    if (status === "ACCEPTED") {
-      if (regFee)  body.registrationFee = parseFloat(regFee)
-      if (procFee) body.processingFee   = parseFloat(procFee)
-      if (admissionLetter) body.admissionLetter = admissionLetter
-    }
+    // Always persist fee amounts and documents whenever status changes
+    if (regFee)          body.registrationFee = parseFloat(regFee)
+    if (procFee)         body.processingFee   = parseFloat(procFee)
+    if (admissionLetter) body.admissionLetter  = admissionLetter
+    if (status === "REJECTED") body.rejectionReason = rejectionReason || "Application unsuccessful at this stage."
     const ok = await patch(body, status)
     if (ok) {
       const labels: Record<string,string> = {
