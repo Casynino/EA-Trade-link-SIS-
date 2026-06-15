@@ -1,7 +1,28 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { createDeposit, normalizeTanzaniaPhone, NtzsApiError } from "@/lib/ntzs"
+import { createDeposit, createOrGetNtzsUser, normalizeTanzaniaPhone, NtzsApiError } from "@/lib/ntzs"
+
+// Cached platform user ID so we only call NTZS once per process lifecycle
+let _cachedPlatformUserId: string | null = null
+
+async function getPlatformUserId(): Promise<string> {
+  if (_cachedPlatformUserId) return _cachedPlatformUserId
+
+  // Use env override if set, otherwise lazily create the platform user once
+  if (process.env.NTZS_PLATFORM_USER_ID) {
+    _cachedPlatformUserId = process.env.NTZS_PLATFORM_USER_ID
+    return _cachedPlatformUserId
+  }
+
+  const user = await createOrGetNtzsUser({
+    externalId: "ea-trade-link-platform",
+    email: "payments@eatradelink.com",
+    name: "EA Trade Link",
+  })
+  _cachedPlatformUserId = user.id
+  return user.id
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,13 +70,9 @@ export async function POST(req: NextRequest) {
 
     const normalizedPhone = phone ? normalizeTanzaniaPhone(phone) : undefined
 
-    // Use EA Trade Link's own nTZS platform user ID (treasury wallet owner).
-    // Funds collected with collectToTreasury:true go directly to this wallet.
-    const ntzsPlatformUserId = process.env.NTZS_PLATFORM_USER_ID
-    if (!ntzsPlatformUserId) {
-      console.error("NTZS_PLATFORM_USER_ID env var not set")
-      return NextResponse.json({ error: "Payment system not configured" }, { status: 503 })
-    }
+    // Get or lazy-create the single EA Trade Link platform user in nTZS.
+    // Only ONE user is ever created (fixed externalId). Funds go to treasury.
+    const ntzsPlatformUserId = await getPlatformUserId()
 
     // Create the deposit — payer receives a USSD prompt, funds go to treasury
     const deposit = await createDeposit({
