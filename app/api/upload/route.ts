@@ -1,33 +1,66 @@
 import { auth } from "@/lib/auth"
 import { NextRequest, NextResponse } from "next/server"
-import { writeFile, mkdir } from "fs/promises"
-import { join } from "path"
+import { UTApi } from "uploadthing/server"
+
+const utapi = new UTApi()
+
+const MAX_SIZE = 16 * 1024 * 1024 // 16 MB
+const ALLOWED_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+])
 
 export async function POST(req: NextRequest) {
   const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
 
-  const formData = await req.formData()
+  let formData: FormData
+  try {
+    formData = await req.formData()
+  } catch {
+    return NextResponse.json({ error: "Invalid form data" }, { status: 400 })
+  }
+
   const file = formData.get("file") as File | null
-  if (!file) return NextResponse.json({ error: "No file" }, { status: 400 })
+  if (!file || typeof file === "string") {
+    return NextResponse.json({ error: "No file provided" }, { status: 400 })
+  }
 
-  const maxSize = 16 * 1024 * 1024 // 16MB
-  if (file.size > maxSize) return NextResponse.json({ error: "File too large (max 16MB)" }, { status: 413 })
+  if (file.size > MAX_SIZE) {
+    return NextResponse.json({ error: "File too large (max 16 MB)" }, { status: 413 })
+  }
 
-  const allowed = ["application/pdf","image/jpeg","image/png","image/webp","image/jpg"]
-  if (!allowed.includes(file.type)) return NextResponse.json({ error: "File type not allowed" }, { status: 415 })
+  if (!ALLOWED_TYPES.has(file.type)) {
+    return NextResponse.json(
+      { error: `File type not allowed. Accepted: PDF, JPG, PNG, WEBP` },
+      { status: 415 }
+    )
+  }
 
-  const bytes = await file.arrayBuffer()
-  const buffer = Buffer.from(bytes)
+  try {
+    const response = await utapi.uploadFiles(file)
 
-  const ext = file.name.split(".").pop() ?? "bin"
-  const safeName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const uploadDir = join(process.cwd(), "public", "uploads")
+    if (response.error) {
+      console.error("UploadThing error:", response.error)
+      return NextResponse.json(
+        { error: "Upload failed. Please check your connection and try again." },
+        { status: 500 }
+      )
+    }
 
-  await mkdir(uploadDir, { recursive: true })
-  await writeFile(join(uploadDir, safeName), buffer)
+    const url = response.data.ufsUrl ?? response.data.url
 
-  return NextResponse.json({ url: `/uploads/${safeName}`, name: file.name })
+    return NextResponse.json({ url, name: file.name })
+  } catch (err) {
+    console.error("Upload route error:", err)
+    return NextResponse.json(
+      { error: "Upload failed. Please try again." },
+      { status: 500 }
+    )
+  }
 }
-
-export const config = { api: { bodyParser: false } }
