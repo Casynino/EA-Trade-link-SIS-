@@ -9,25 +9,22 @@ import { SyncFeedButton } from "./sync-button"
 export const dynamic = "force-dynamic"
 
 async function getScholarshipsWithStats() {
-  const scholarships = await db.$queryRaw<Record<string, unknown>[]>`
-    SELECT s.*, COUNT(sa.id) as applicationCount
-    FROM scholarships s
-    LEFT JOIN scholarship_applications sa ON sa.scholarshipId = s.id
-    GROUP BY s.id
-    ORDER BY s.sortOrder ASC, s.createdAt DESC
-  `
-  return scholarships.map((r) => ({
-    id: r.id as string,
-    title: r.title as string,
-    level: r.level as ScholarshipLevel,
-    city: r.city as string,
-    intake: r.intake as string,
-    duration: r.duration as string,
-    isActive: Boolean(r.isActive),
-    isFeatured: Boolean(r.isFeatured),
-    slots: r.slots as number | null,
-    applicationCount: Number(r.applicationCount),
-    majors: JSON.parse((r.majorsJson as string) || "[]") as string[],
+  const scholarships = await db.scholarship.findMany({
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+    include: { _count: { select: { scholarshipApplications: true } } },
+  })
+  return scholarships.map((s) => ({
+    id: s.id,
+    title: s.title,
+    level: s.level as ScholarshipLevel,
+    city: s.city,
+    intake: s.intake,
+    duration: s.duration,
+    isActive: s.isActive,
+    isFeatured: s.isFeatured,
+    slots: s.slots,
+    applicationCount: s._count.scholarshipApplications,
+    majors: JSON.parse(s.majorsJson || "[]") as string[],
   }))
 }
 

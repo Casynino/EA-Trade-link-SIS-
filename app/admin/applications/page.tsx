@@ -54,15 +54,14 @@ interface UnifiedApp {
 
 async function getAllApplications(): Promise<UnifiedApp[]> {
   const [scholarshipApps, studyApps, visaApps, oppApps] = await Promise.all([
-    db.$queryRaw<{ id: string; status: string; createdAt: Date; userName: string; userEmail: string; scholarshipTitle: string }[]>`
-      SELECT sa.id, sa.status, sa.createdAt,
-             u.name as userName, u.email as userEmail,
-             COALESCE(s.title, 'Unknown Scholarship') as scholarshipTitle
-      FROM scholarship_applications sa
-      JOIN users u ON u.id = sa.userId
-      LEFT JOIN scholarships s ON s.id = sa.scholarshipId
-      ORDER BY sa.createdAt DESC LIMIT 200
-    `,
+    db.scholarshipApplication.findMany({
+      take: 200,
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: { select: { name: true, email: true } },
+        scholarship: { select: { title: true } },
+      },
+    }),
     db.studyApplication.findMany({ take: 200, orderBy: { createdAt: "desc" }, include: { user: { select: { name: true, email: true } } } }),
     db.visaApplication.findMany({ take: 200, orderBy: { createdAt: "desc" }, include: { user: { select: { name: true, email: true } } } }),
     db.application.findMany({
@@ -76,9 +75,9 @@ async function getAllApplications(): Promise<UnifiedApp[]> {
 
   scholarshipApps.forEach(a => result.push({
     id: a.id, category: "scholarship",
-    title: a.scholarshipTitle,
-    userName: a.userName, userEmail: a.userEmail,
-    status: a.status, createdAt: new Date(a.createdAt),
+    title: a.scholarship?.title ?? "Unknown Scholarship",
+    userName: a.user?.name ?? "Unknown", userEmail: a.user?.email ?? "",
+    status: a.status, createdAt: a.createdAt,
     href: `/admin/applications/${a.id}`,
     degreeOrType: "Scholarship Program",
   }))
