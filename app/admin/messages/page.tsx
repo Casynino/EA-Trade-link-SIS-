@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { formatDate, getInitials } from "@/lib/utils"
 
+export const dynamic = "force-dynamic"
+
 export default async function AdminMessagesPage() {
   const session = await auth()
   if (!session || !["ADMIN", "SUPER_ADMIN"].includes(session.user.role)) redirect("/dashboard")

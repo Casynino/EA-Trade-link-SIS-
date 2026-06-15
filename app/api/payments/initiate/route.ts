@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { createDeposit, createOrGetNtzsUser, normalizeTanzaniaPhone, NtzsApiError } from "@/lib/ntzs"
+import { createDeposit, normalizeTanzaniaPhone, NtzsApiError } from "@/lib/ntzs"
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,26 +49,17 @@ export async function POST(req: NextRequest) {
 
     const normalizedPhone = phone ? normalizeTanzaniaPhone(phone) : undefined
 
-    // Look up the user's email (required by NTZS to provision their wallet)
-    const userRecord = await db.user.findUnique({
-      where: { id: userId },
-      select: { email: true, name: true },
-    })
-    if (!userRecord) {
-      return NextResponse.json({ error: "User not found" }, { status: 400 })
+    // Use EA Trade Link's own nTZS platform user ID (treasury wallet owner).
+    // Funds collected with collectToTreasury:true go directly to this wallet.
+    const ntzsPlatformUserId = process.env.NTZS_PLATFORM_USER_ID
+    if (!ntzsPlatformUserId) {
+      console.error("NTZS_PLATFORM_USER_ID env var not set")
+      return NextResponse.json({ error: "Payment system not configured" }, { status: 503 })
     }
 
-    // Create or retrieve the payer's nTZS wallet (idempotent)
-    const ntzsUser = await createOrGetNtzsUser({
-      externalId: userId,
-      email: userRecord.email,
-      name: userRecord.name ?? undefined,
-      phone: normalizedPhone,
-    })
-
-    // Call NTZS API to create the deposit with correct field names
+    // Create the deposit — payer receives a USSD prompt, funds go to treasury
     const deposit = await createDeposit({
-      ntzsUserId:        ntzsUser.id,
+      ntzsUserId:        ntzsPlatformUserId,
       amountTzs:         amount,
       paymentMethod:     method,
       provider:          provider || undefined,

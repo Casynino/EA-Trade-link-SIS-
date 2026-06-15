@@ -9,6 +9,8 @@ import { formatDate } from "@/lib/utils"
 import { ExchangeRateEditor } from "@/components/admin/exchange-rate-editor"
 import Link from "next/link"
 
+export const dynamic = "force-dynamic"
+
 export default async function AdminExchangePage() {
   const session = await auth()
   if (!session || !["ADMIN", "SUPER_ADMIN"].includes(session.user.role)) redirect("/dashboard")

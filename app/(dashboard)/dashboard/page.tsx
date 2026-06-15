@@ -4,11 +4,14 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
+
   GraduationCap, Briefcase, UserCheck, Calendar,
   Clock, CheckCircle2, AlertCircle,
   ChevronRight, ArrowRight, Star, Plane, Factory, ArrowLeftRight,
   FileText, Globe2, Sparkles, TrendingUp, Building2, Search,
 } from "lucide-react"
+
+export const dynamic = "force-dynamic"
 
 // ── Shared status helpers ──────────────────────────────────────────────────────
 const STATUS_COLOR: Record<string, string> = {

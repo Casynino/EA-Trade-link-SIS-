@@ -3,6 +3,8 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/db"
 import { ScholarshipForm } from "../scholarship-form"
 
+export const dynamic = "force-dynamic"
+
 export default async function NewScholarshipPage() {
   const session = await auth()
   if (!session?.user) redirect("/login")

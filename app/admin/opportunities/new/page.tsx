@@ -3,6 +3,8 @@ import { db } from "@/lib/db"
 import { redirect } from "next/navigation"
 import { NewOpportunityForm } from "./form"
 
+export const dynamic = "force-dynamic"
+
 export default async function NewOpportunityPage() {
   const session = await auth()
   if (!session?.user) redirect("/login")

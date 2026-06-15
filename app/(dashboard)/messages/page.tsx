@@ -8,6 +8,8 @@ import { MessageSquare } from "lucide-react"
 import { formatDate, getInitials } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
+export const dynamic = "force-dynamic"
+
 export default async function MessagesPage() {
   const session = await auth()
   if (!session) redirect("/login")

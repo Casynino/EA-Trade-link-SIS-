@@ -9,8 +9,11 @@ import {
   ApplicationsByTypeChart, StatusPieChart, ApplicationTrendChart, FunnelChart,
 } from "@/components/admin/admin-charts"
 import {
+
   Users, GraduationCap, AlertCircle, Clock, TrendingUp, ArrowRight, Plus, Eye,
 } from "lucide-react"
+
+export const dynamic = "force-dynamic"
 
 const STATUS_COLOR: Record<string, string> = {
   SUBMITTED:          "ea-badge ea-badge-blue",
