@@ -64,18 +64,6 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## Demo Accounts
-
-After seeding, use these accounts to test:
-
-| Account | Email | Password |
-|---------|-------|----------|
-| Admin | admin@eatradelink.com | admin123! |
-| Student | student@demo.com | student123! |
-| Business | business@demo.com | business123! |
-
----
-
 ## Project Structure
 
 ```
