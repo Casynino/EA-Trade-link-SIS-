@@ -1,6 +1,12 @@
 import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 
+// ─── MAINTENANCE MODE ────────────────────────────────────────────────────────
+// Set to true to show the maintenance page to everyone.
+// Set to false (and redeploy) to bring the site back online.
+const MAINTENANCE_MODE = true
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Fully public — no auth ever required
 const FULLY_PUBLIC = [
   "/",
@@ -31,6 +37,14 @@ function getAccountType(userTypes?: string, role?: string): string {
 export default auth((req) => {
   const { pathname } = req.nextUrl
   const isAuthenticated = !!req.auth
+
+  // 0. Maintenance mode — redirect everyone except API routes to /maintenance
+  if (MAINTENANCE_MODE) {
+    if (!pathname.startsWith("/maintenance") && !pathname.startsWith("/api/")) {
+      return NextResponse.redirect(new URL("/maintenance", req.url))
+    }
+    return NextResponse.next()
+  }
 
   // 1. Always allow fully public routes
   if (FULLY_PUBLIC.some(p => pathname === p || pathname.startsWith(p + "/"))) {
