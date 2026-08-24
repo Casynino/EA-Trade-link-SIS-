@@ -42,17 +42,40 @@ function DynamicList({ label, items, onChange, placeholder }: {
     <div>
       <label className={LABEL}>{label}</label>
       <div className="space-y-2">
-        {items.map((item, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input value={item} placeholder={placeholder}
-              onChange={e => { const n = [...items]; n[i] = e.target.value; onChange(n) }}
-              className={INPUT} style={INPUT_STYLE} />
-            <button type="button" onClick={() => onChange(items.filter((_, j) => j !== i))}
-              className="shrink-0 rounded-lg p-2 text-red-400 hover:bg-red-400/10 transition-colors">
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ))}
+        {items.map((item, i) => {
+          const filled = item.trim().length > 0
+          return (
+            <div key={i} className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  value={item}
+                  placeholder={placeholder}
+                  onChange={e => { const n = [...items]; n[i] = e.target.value; onChange(n) }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      // If current field has content, add a new blank at the end
+                      if (item.trim()) onChange([...items, ""])
+                    }
+                  }}
+                  className={INPUT}
+                  style={{
+                    ...INPUT_STYLE,
+                    paddingRight: filled ? "2rem" : undefined,
+                    borderColor: filled ? "rgba(52,211,153,0.4)" : (INPUT_STYLE as React.CSSProperties).borderColor,
+                  }}
+                />
+                {filled && (
+                  <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px]" style={{ color: "#34d399" }}>✓</span>
+                )}
+              </div>
+              <button type="button" onClick={() => onChange(items.filter((_, j) => j !== i))}
+                className="shrink-0 rounded-lg p-2 text-red-400 hover:bg-red-400/10 transition-colors">
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )
+        })}
         <button type="button" onClick={() => onChange([...items, ""])}
           className="flex items-center gap-1.5 text-xs font-semibold transition-colors hover:text-foreground"
           style={{ color: "#38bdf8" }}>
@@ -147,8 +170,7 @@ export function ScholarshipForm({
 
   function clean(arr: string[]) { return arr.filter(s => s.trim()) }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function save(publish: boolean) {
     if (!title.trim() || !city.trim() || !overview.trim()) {
       toast({ title: "Missing fields", description: "Title, city, and overview are required.", variant: "destructive" })
       return
@@ -207,7 +229,7 @@ export function ScholarshipForm({
       tags: clean(tags),
       slots: slots ? parseInt(slots) : null,
       isFeatured,
-      isActive,
+      isActive: publish ? true : false,
       sortOrder: parseInt(sortOrder) || 0,
       imageUrl: imageUrl || undefined,
     }
@@ -225,7 +247,12 @@ export function ScholarshipForm({
         }
       )
       if (!res.ok) throw new Error(await res.text())
-      toast({ title: mode === "edit" ? "Scholarship updated!" : "Scholarship created!", description: "Changes are live." })
+      toast({
+        title: publish
+          ? (mode === "edit" ? "Scholarship updated & published!" : "Scholarship published!")
+          : (mode === "edit" ? "Draft saved!" : "Saved as draft!"),
+        description: publish ? "Now visible to students." : "Hidden — you can publish it anytime.",
+      })
       router.push("/admin/scholarships")
       router.refresh()
     } catch (err) {
@@ -233,6 +260,11 @@ export function ScholarshipForm({
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    await save(isActive)
   }
 
   return (
@@ -547,7 +579,8 @@ export function ScholarshipForm({
       </div>
 
       {/* Submit */}
-      <div className="flex items-center gap-3 pb-8">
+      <div className="flex flex-wrap items-center gap-3 pb-8">
+        {/* Publish / Save Changes */}
         <button type="submit" disabled={loading}
           className="flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-black transition-all disabled:opacity-50 hover:scale-105"
           style={{ background: "#38bdf8", color: "#05091a" }}>
@@ -556,6 +589,15 @@ export function ScholarshipForm({
             : <>{mode === "edit" ? "Save Changes" : "Publish Scholarship"} <ArrowRight className="h-4 w-4" /></>
           }
         </button>
+
+        {/* Save as Draft (hidden, not published) */}
+        <button type="button" disabled={loading} onClick={() => save(false)}
+          className="flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition-all disabled:opacity-50 hover:scale-105"
+          style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.75)" }}>
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          Save as Draft
+        </button>
+
         <button type="button" onClick={() => router.back()}
           className="rounded-xl px-4 py-3 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
           Cancel

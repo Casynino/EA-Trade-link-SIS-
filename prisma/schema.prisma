@@ -215,6 +215,7 @@ model Scholarship {
   admissionProcessJson     String   @default("[]")   // JSON: string[]
   tagsJson                 String   @default("[]")   // JSON: string[]
   slots                    Int?
+  imageUrl                 String?
   isActive                 Boolean  @default(true)
   isFeatured               Boolean  @default(false)
   sortOrder                Int      @default(0)
