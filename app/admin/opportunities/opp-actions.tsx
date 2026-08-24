@@ -59,7 +59,7 @@ export function OppActions({ id, isActive }: { id: string; isActive: boolean }) 
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div
-            className="absolute right-0 top-8 z-20 w-40 rounded-xl p-1 shadow-xl"
+            className="absolute right-0 bottom-8 z-20 w-40 rounded-xl p-1 shadow-xl"
             style={{
               background: "rgba(10,18,48,0.97)",
               border: "1px solid rgba(255,255,255,0.1)",
