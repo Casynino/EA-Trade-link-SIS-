@@ -4,7 +4,7 @@ import { NextResponse } from "next/server"
 // ─── MAINTENANCE MODE ────────────────────────────────────────────────────────
 // Set to true to show the maintenance page to everyone.
 // Set to false (and redeploy) to bring the site back online.
-const MAINTENANCE_MODE = true
+const MAINTENANCE_MODE = false
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Fully public — no auth ever required
