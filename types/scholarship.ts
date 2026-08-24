@@ -94,6 +94,7 @@ export interface ScholarshipData {
   slots?: number
   isFeatured?: boolean
   sortOrder?: number
+  imageUrl?: string
 }
 
 // Parsed from DB (JSON strings → objects)

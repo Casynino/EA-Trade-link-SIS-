@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react"
 import { usePathname } from "next/navigation"
-import { LogOut, Settings, User, ChevronDown, Globe2 } from "lucide-react"
+import { LogOut, Settings, User, ChevronDown, Globe2, ArrowLeft } from "lucide-react"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { getInitials } from "@/lib/utils"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 // Page title map — derived from current path
 const PAGE_TITLES: Record<string, string> = {
@@ -31,6 +32,11 @@ const PAGE_TITLES: Record<string, string> = {
 export function Header({ userName, userImage }: { userName: string; userImage: string }) {
   const { data: session } = useSession()
   const pathname = usePathname()
+  const router = useRouter()
+
+  // Show back button on mobile when we're deeper than a root page
+  const rootPaths = ["/dashboard", "/admin/dashboard", "/", "/profile", "/messages", "/exchange", "/apply-to-china", "/scholarships", "/apply-visa", "/factory-visits", "/sourcing"]
+  const showBack = !rootPaths.some(p => pathname === p) && pathname !== "/"
 
   // Best-match title (handles dynamic segments like /admin/applications/[id])
   const title = Object.entries(PAGE_TITLES)
@@ -44,8 +50,18 @@ export function Header({ userName, userImage }: { userName: string; userImage: s
 
   return (
     <header className="sticky top-0 z-40 h-14 flex items-center justify-between gap-4 px-6" style={{ background: "rgba(5,9,26,0.85)", borderBottom: "1px solid rgba(255,255,255,0.06)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)" }}>
-      {/* Left: page title */}
-      <div className="flex items-center gap-3 min-w-0">
+      {/* Left: back button (mobile) + page title */}
+      <div className="flex items-center gap-2 min-w-0">
+        {showBack && (
+          <button
+            onClick={() => router.back()}
+            className="md:hidden flex items-center justify-center h-8 w-8 rounded-lg shrink-0 transition-colors hover:bg-white/10"
+            style={{ color: "rgba(255,255,255,0.6)" }}
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+        )}
         <div>
           <h1 className="text-[14px] font-bold text-foreground tracking-tight leading-none">{title}</h1>
           <p className="text-[11px] text-muted-foreground mt-0.5 hidden sm:block">
@@ -56,8 +72,15 @@ export function Header({ userName, userImage }: { userName: string; userImage: s
 
       {/* Right: actions */}
       <div className="flex items-center gap-1.5">
-        {/* Browse link for users */}
-        {!isAdmin && (
+        {/* Browse / View Site link */}
+        {isAdmin ? (
+          <Link href="/" target="_blank">
+            <Button variant="ghost" size="sm" className="hidden sm:flex gap-1.5 text-muted-foreground text-xs font-medium h-8">
+              <Globe2 className="h-3.5 w-3.5" />
+              View Site
+            </Button>
+          </Link>
+        ) : (
           <Link href="/">
             <Button variant="ghost" size="sm" className="hidden sm:flex gap-1.5 text-muted-foreground text-xs font-medium h-8">
               <Globe2 className="h-3.5 w-3.5" />

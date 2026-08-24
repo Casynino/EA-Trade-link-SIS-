@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Trash2, Loader2, ArrowRight, GripVertical } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import { ImageUploadField } from "@/components/ui/image-upload-field"
 import type { ScholarshipData, ScholarshipLevel, ScholarshipFundingType, TuitionConfig, AccommodationConfig, StipendConfig } from "@/types/scholarship"
 import { FUNDING_TYPE_META } from "@/types/scholarship"
 
@@ -86,6 +87,7 @@ export function ScholarshipForm({
   const [isFeatured, setIsFeatured] = useState(initialData?.isFeatured ?? false)
   const [isActive, setIsActive] = useState(true)
   const [sortOrder, setSortOrder] = useState<string>(String(initialData?.sortOrder ?? 0))
+  const [imageUrl, setImageUrl] = useState<string>(initialData?.imageUrl ?? "")
 
   // Dynamic lists
   const [majors, setMajors] = useState<string[]>(initialData?.majors ?? [""])
@@ -196,6 +198,7 @@ export function ScholarshipForm({
       isFeatured,
       isActive,
       sortOrder: parseInt(sortOrder) || 0,
+      imageUrl: imageUrl || undefined,
     }
 
     setLoading(true)
@@ -287,6 +290,13 @@ export function ScholarshipForm({
             <textarea value={overview} onChange={e => setOverview(e.target.value)} required rows={4}
               placeholder="2–3 sentences describing the program…"
               className={INPUT + " resize-none"} style={INPUT_STYLE} />
+          </div>
+          <div className="sm:col-span-2">
+            <ImageUploadField
+              label="Cover Image"
+              value={imageUrl}
+              onChange={setImageUrl}
+            />
           </div>
         </div>
 

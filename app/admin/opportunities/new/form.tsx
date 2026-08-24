@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
+import { ImageUploadField } from "@/components/ui/image-upload-field"
 import { Loader2, Plus, Trash2 } from "lucide-react"
 import { getDefaultDocs, getDefaultFields, type RequiredDoc, type AppField } from "@/lib/application-engine"
 import { FinancialModelBuilder, defaultFinancialModelForType, type FinancialModel } from "@/components/financial-model-builder"
@@ -194,7 +195,7 @@ export function NewOpportunityForm({ adminId }: { adminId: string }) {
             <input id="startDate" name="startDate" type="date" style={{ ...S.input, colorScheme: "dark" }} />
           </div>
         </div>
-        <DField id="imageUrl" label="Image URL (optional)" placeholder="https://…" />
+        <ImageUploadField name="imageUrl" label="Cover Image (optional)" />
       </div>
 
       {/* Type-specific sections */}
