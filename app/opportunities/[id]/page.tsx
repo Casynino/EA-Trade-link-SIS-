@@ -78,13 +78,20 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
   let scholarshipFinancials: Record<string, unknown> | null = null
   let scholarshipData: Record<string, unknown> | null = null
   if (opp.type === "SCHOLARSHIP") {
-    const rows = await db.$queryRaw<Record<string, unknown>[]>`
-      SELECT financialsJson, requirementsJson, applicationHighlightsJson, admissionProcessJson, majorsJson, language, duration, ageRange, intake
-      FROM scholarships WHERE id = ${id} LIMIT 1
-    `
-    if (rows.length > 0) {
-      scholarshipData = rows[0]
-      try { scholarshipFinancials = JSON.parse(rows[0].financialsJson as string || "{}") } catch { /* legacy */ }
+    const sch = await db.scholarship.findUnique({ where: { id } })
+    if (sch) {
+      scholarshipData = {
+        financialsJson:            sch.financialsJson,
+        requirementsJson:          sch.requirementsJson,
+        applicationHighlightsJson: sch.applicationHighlightsJson,
+        admissionProcessJson:      sch.admissionProcessJson,
+        majorsJson:                sch.majorsJson,
+        language:                  sch.language,
+        duration:                  sch.duration,
+        ageRange:                  sch.ageRange,
+        intake:                    sch.intake,
+      }
+      try { scholarshipFinancials = JSON.parse(sch.financialsJson || "{}") } catch { /* legacy */ }
     }
   }
 
