@@ -26,11 +26,21 @@ export interface RequiredDoc {
 // ── Default fields per opportunity type ───────────────────────────────────────
 
 const DEFAULT_FIELDS: Record<string, AppField[]> = {
+  // NOTE: The opportunity already defines the program, university, level, and major.
+  // Step 2 collects the student's ACADEMIC BACKGROUND — what they currently have.
   SCHOLARSHIP: [
-    { id: "degreeLevel",  label: "Degree Level Sought",   type: "select",   required: true,  options: ["BACHELOR","MASTER","PHD","LANGUAGE","CERTIFICATE"] },
-    { id: "fieldOfStudy", label: "Intended Field of Study", type: "text",   required: true,  placeholder: "e.g. Computer Science, Business Administration" },
-    { id: "gpa",          label: "Current GPA (out of 4.0)", type: "number", required: false, placeholder: "e.g. 3.5" },
-    { id: "languages",    label: "Languages Spoken",       type: "text",     required: false, placeholder: "e.g. English, Swahili, Chinese" },
+    { id: "currentLevel",       label: "Highest Qualification Completed",      type: "select",   required: true,
+      options: ["High School / O-Level", "A-Level / Foundation", "Diploma / Certificate", "Bachelor's Degree", "Master's Degree", "PhD", "Other"] },
+    { id: "institution",        label: "Name of Institution Attended",          type: "text",     required: true,
+      placeholder: "e.g. University of Dar es Salaam" },
+    { id: "graduationYear",     label: "Year of Graduation (or Expected Year)", type: "text",     required: false,
+      placeholder: "e.g. 2024" },
+    { id: "gpa",                label: "Academic Score / GPA / Grade Average",  type: "text",     required: false,
+      placeholder: "e.g. 3.8/4.0   ·   85%   ·   Division 1   ·   Second Class Upper" },
+    { id: "englishProficiency", label: "English Proficiency",                   type: "text",     required: false,
+      placeholder: "e.g. IELTS 6.5  ·  TOEFL 80  ·  Native Speaker  ·  None" },
+    { id: "chineseProficiency", label: "Chinese Language Level (if any)",       type: "text",     required: false,
+      placeholder: "e.g. HSK 3  ·  Beginner  ·  None" },
   ],
   JOB: [
     { id: "currentJob",  label: "Current / Most Recent Job Title", type: "text",     required: false, placeholder: "e.g. Electrician, Factory Supervisor" },

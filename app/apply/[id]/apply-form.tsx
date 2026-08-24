@@ -180,10 +180,10 @@ const FALLBACK_IMAGES: Record<string, string> = {
 }
 
 const STEPS = [
-  { id: 1, label: "Personal Info",   icon: User        },
-  { id: 2, label: "Application",     icon: FileText    },
-  { id: 3, label: "Documents",       icon: AlertCircle },
-  { id: 4, label: "Review & Submit", icon: Eye         },
+  { id: 1, label: "Personal Info",    icon: User        },
+  { id: 2, label: "Your Background",  icon: FileText    },
+  { id: 3, label: "Documents",        icon: AlertCircle },
+  { id: 4, label: "Review & Submit",  icon: Eye         },
 ]
 
 interface CoreForm {
@@ -239,9 +239,14 @@ export function ApplyForm({
   async function submit() {
     setLoading(true)
     try {
-      const experienceLines = appFields
-        .filter((f) => f.id !== "degreeLevel" && f.id !== "fieldOfStudy" && f.id !== "gpa" && f.id !== "languages")
-        .map((f) => `${f.label}: ${dynValues[f.id] ?? ""}`)
+      // Build a structured academic background string from Step 2 fields.
+      // For SCHOLARSHIP: "degreeLevel" maps to the student's CURRENT qualification
+      // (not the program they want — that's already defined by the opportunity).
+      const isScholarship = opportunity.type === "SCHOLARSHIP"
+      const academicLines = appFields
+        .filter((f) => !["degreeLevel", "fieldOfStudy", "gpa", "languages"].includes(f.id))
+        .filter((f) => (dynValues[f.id] ?? "").trim())
+        .map((f) => `${f.label}: ${dynValues[f.id]}`)
         .join("\n")
 
       const res = await fetch("/api/applications", {
@@ -250,11 +255,17 @@ export function ApplyForm({
         body: JSON.stringify({
           opportunityId: opportunity.id,
           coverLetter:   core.coverLetter,
-          gpa:           dynValues.gpa ? parseFloat(dynValues.gpa) : undefined,
-          degreeLevel:   dynValues.degreeLevel || undefined,
-          fieldOfStudy:  dynValues.fieldOfStudy || undefined,
-          experience:    experienceLines || undefined,
-          languages:     dynValues.languages || undefined,
+          // For scholarships: currentLevel = student's existing qualification
+          degreeLevel: isScholarship
+            ? dynValues.currentLevel || undefined
+            : dynValues.degreeLevel || undefined,
+          // fieldOfStudy is NOT sent for scholarships (it belongs to the opportunity, not the student)
+          fieldOfStudy: isScholarship ? undefined : dynValues.fieldOfStudy || undefined,
+          // gpa stored as text inside experience for scholarships; as float for other types
+          gpa: !isScholarship && dynValues.gpa ? parseFloat(dynValues.gpa) : undefined,
+          // academic background details concatenated
+          experience: academicLines || undefined,
+          languages:  dynValues.languages || undefined,
         }),
       })
       const data = await res.json()
@@ -390,14 +401,16 @@ export function ApplyForm({
             </p>
             <h2 className="text-lg font-bold text-white">
               {step === 1 ? "Personal Information"
-               : step === 2 ? "Application Details"
+               : step === 2 ? (opportunity.type === "SCHOLARSHIP" ? "Your Academic Background" : "Application Details")
                : step === 3 ? "Required Documents"
                : "Review & Submit"}
             </h2>
             <p className="text-sm mt-0.5" style={{ color: "rgba(255,255,255,0.38)" }}>
-              {step === 1 ? "Tell us about yourself"
-               : step === 2 ? "Provide details specific to this opportunity"
-               : step === 3 ? "Review and confirm what documents you'll need to provide"
+              {step === 1 ? "Tell us about yourself — name, contact details, nationality"
+               : step === 2 ? (opportunity.type === "SCHOLARSHIP"
+                   ? "Tell us about your current education — not the program you want (that's already defined by this opportunity)"
+                   : "Provide details specific to this opportunity")
+               : step === 3 ? "Upload the required documents for your application"
                : "Final check before sending your application"}
             </p>
           </div>
@@ -418,9 +431,23 @@ export function ApplyForm({
               </div>
             )}
 
-            {/* ── STEP 2: Dynamic opportunity-specific fields ── */}
+            {/* ── STEP 2: Academic background / opportunity-specific fields ── */}
             {step === 2 && (
               <div className="space-y-4">
+                {/* For scholarships: remind student this is about THEIR background, not program selection */}
+                {opportunity.type === "SCHOLARSHIP" && (
+                  <div className="rounded-xl p-4" style={{
+                    background: "rgba(56,189,248,0.07)",
+                    border: "1px solid rgba(56,189,248,0.18)",
+                  }}>
+                    <p className="text-sm font-semibold mb-1" style={{ color: "#38bdf8" }}>📚 About your education — not the program</p>
+                    <p className="text-xs leading-relaxed" style={{ color: "rgba(56,189,248,0.75)" }}>
+                      The program, university, and scholarship details are already defined by this opportunity.
+                      Fill in your <strong>current academic qualifications</strong> so Admin can assess your eligibility.
+                    </p>
+                  </div>
+                )}
+
                 {typeNote && (
                   <div className="rounded-xl p-4" style={{
                     background: "rgba(251,191,36,0.08)",
@@ -565,7 +592,25 @@ export function ApplyForm({
             {/* ── STEP 4: Review & Submit ── */}
             {step === 4 && (
               <div className="space-y-5">
-                {/* Summary */}
+
+                {/* ── Opportunity you're applying for ── */}
+                <div className="rounded-xl p-4 space-y-2"
+                  style={{ background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.2)" }}>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] mb-3" style={{ color: "rgba(212,175,55,0.6)" }}>
+                    You Are Applying For
+                  </p>
+                  <p className="text-base font-bold text-white leading-snug">{opportunity.title}</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
+                    {opportunity.organization && <span>🏫 {opportunity.organization}</span>}
+                    {opportunity.location     && <span>📍 {opportunity.location}</span>}
+                    {opportunity.degreeLevel  && <span>🎓 {opportunity.degreeLevel}</span>}
+                  </div>
+                  <p className="text-[11px] pt-1" style={{ color: "rgba(212,175,55,0.5)" }}>
+                    This is the opportunity defined by EA Trade Link Admin. You are applying directly for it — your eligibility will be reviewed after submission.
+                  </p>
+                </div>
+
+                {/* ── Applicant summary ── */}
                 <div className="rounded-xl overflow-hidden text-sm" style={{
                   background: "rgba(255,255,255,0.03)",
                   border: "1px solid rgba(255,255,255,0.07)",
@@ -575,22 +620,21 @@ export function ApplyForm({
                   <ReviewRow label="Nationality" value={core.nationality} />
                   {appFields.map((f) => {
                     const val = dynValues[f.id]
-                    if (!val || val.length > 80) return null
+                    if (!val || val.length > 100) return null
                     return <ReviewRow key={f.id} label={f.label} value={val} />
                   })}
-                  <ReviewRow label="Opportunity" value={opportunity.title} />
                 </div>
 
-                {/* Cover letter */}
+                {/* ── Personal Statement / Motivation ── */}
                 <div>
                   <label className="block text-xs font-black uppercase tracking-[0.15em] mb-2" style={{ color: "rgba(212,175,55,0.7)" }}>
                     {opportunity.type === "SCHOLARSHIP"
-                      ? "Personal Statement / Motivation Letter"
-                      : "Cover Letter / Why are you interested?"} *
+                      ? "Personal Statement / Motivation Letter *"
+                      : "Cover Letter / Why are you interested? *"}
                   </label>
                   <p className="text-xs mb-2" style={{ color: "rgba(255,255,255,0.3)" }}>
                     {opportunity.type === "SCHOLARSHIP"
-                      ? "Tell us about your academic background, goals, and why you deserve this opportunity."
+                      ? "Briefly explain your goals, why you are a strong candidate, and what you intend to achieve with this scholarship. Do not repeat the program details — focus on yourself."
                       : "Explain your interest in this opportunity and what you hope to achieve."}
                   </p>
                   <textarea
@@ -613,7 +657,7 @@ export function ApplyForm({
                     {getSubmissionMessage(opportunity.type)}
                   </p>
                   <p className="text-xs mt-1.5 font-medium" style={{ color: "rgba(96,165,250,0.6)" }}>
-                    No fees are required at this stage — payment only applies after your application is approved.
+                    No fees are required at this stage — payment only applies after your application is approved by Admin.
                   </p>
                 </div>
 
@@ -625,7 +669,7 @@ export function ApplyForm({
                     className="mt-0.5 h-4 w-4 rounded accent-yellow-400"
                   />
                   <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
-                    I agree to EA Trade Link's terms and conditions. I understand that fees only apply after my application is reviewed and approved.
+                    I agree to EA Trade Link's terms and conditions. I confirm all information I have provided is accurate and all documents are genuine.
                   </p>
                 </label>
               </div>
