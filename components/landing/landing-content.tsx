@@ -242,11 +242,21 @@ export function LandingContent({ opportunities, statValues, userName }: Props) {
                       <Link href={svc("/apply-to-china")}
                         className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-black transition-all hover:scale-105"
                         style={{ background: "#38bdf8", color: "#05091a" }}>
-                        {isStudent ? "Continue Application" : "Start My Application"} <ArrowRight className="h-4 w-4" />
+                        {isStudent ? "Continue Application" : "Create Account & Apply"} <ArrowRight className="h-4 w-4" />
                       </Link>
-                      <p className="text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-                        Free to apply · Response within 48 hours
-                      </p>
+                      {isStudent ? (
+                        <p className="text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                          Free to apply · Response within 48 hours
+                        </p>
+                      ) : (
+                        <p className="text-center text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+                          A free account is required so you can track your application.{" "}
+                          <Link href="/auth/student/login?redirect=/apply-to-china"
+                            className="underline hover:text-white/60 transition-colors">
+                            Already have one?
+                          </Link>
+                        </p>
+                      )}
                     </>
                   )}
                 </div>

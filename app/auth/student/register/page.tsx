@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { signIn } from "next-auth/react"
 import { GraduationCap, Globe2, Eye, EyeOff, Loader2, ArrowRight } from "lucide-react"
 import { registerUser } from "@/actions/auth"
 import { useToast } from "@/components/ui/use-toast"
@@ -30,11 +31,30 @@ function Form() {
       const result = await registerUser(fd)
       if (result.error) {
         toast({ title: "Registration failed", description: result.error, variant: "destructive" })
-      } else {
-        toast({ title: "Account created!", description: "Welcome to EA Trade Link." })
-        router.push(redirect)
-        router.refresh()
+        return
       }
+
+      // Creating the account does NOT establish a session. Application pages now
+      // require one, so sign the new user in here — otherwise redirecting them to
+      // an application page bounces them straight back to this form.
+      const signInResult = await signIn("credentials", {
+        email: String(fd.get("email") ?? ""),
+        password: String(fd.get("password") ?? ""),
+        redirect: false,
+      })
+
+      if (signInResult?.error) {
+        toast({
+          title: "Account created",
+          description: "Please sign in to continue with your application.",
+        })
+        router.push(`/auth/student/login?redirect=${encodeURIComponent(redirect)}`)
+        return
+      }
+
+      toast({ title: "Account created!", description: "Welcome to EA Trade Link." })
+      router.push(redirect)
+      router.refresh()
     } finally {
       setLoading(false)
     }

@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { redirect } from "next/navigation"
 import { StudyWizard } from "./study-wizard"
 import { WrongRoleBlock } from "@/components/wrong-role-block"
 
@@ -17,6 +18,13 @@ export const dynamic = "force-dynamic"
  */
 export default async function StudyInChinaPage() {
   const session = await auth()
+
+  // An account is REQUIRED before any application can be started. A guest must
+  // never be able to fill in the wizard and only hit a wall at submit time —
+  // they are sent to registration first and returned here afterwards.
+  if (!session?.user?.id) {
+    redirect(`/auth/student/register?redirect=${encodeURIComponent("/apply-to-china")}`)
+  }
 
   // Block business users — they cannot apply to student programmes
   if (session?.user && session.user.accountType === "BUSINESS") {

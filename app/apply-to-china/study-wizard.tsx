@@ -203,8 +203,8 @@ export function StudyWizard({ userId, userEmail, publishedCount = 0 }: {
 
   const handleSubmit = async () => {
     if (!certified) return
-    // An account is required so the application is saved and trackable.
-    // Previously an unauthenticated submit silently discarded everything.
+    // Defence in depth: /apply-to-china already redirects guests to registration
+    // before this component ever renders, and the API rejects guests with 401.
     if (!userId) {
       router.push(`/auth/student/register?redirect=${encodeURIComponent("/apply-to-china")}`)
       return
@@ -271,12 +271,6 @@ export function StudyWizard({ userId, userEmail, publishedCount = 0 }: {
               and match you to the scholarship and university that fit you best — you don&apos;t
               need to choose a programme yourself.
             </p>
-            {!userId && (
-              <p className="mt-3 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                Already have an account?{" "}
-                <Link href="/auth/student/login?redirect=/apply-to-china" className="underline" style={{ color: "#38bdf8" }}>Sign in</Link>
-              </p>
-            )}
             {publishedCount > 0 && (
               <p className="mt-3 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
                 Already know which programme you want?{" "}
