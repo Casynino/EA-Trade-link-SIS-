@@ -1,7 +1,7 @@
 import { requireRole } from "@/lib/role-guard"
 import { db } from "@/lib/db"
 import Link from "next/link"
-import { GraduationCap, MapPin, Users, Star, Plus } from "lucide-react"
+import { GraduationCap, MapPin, Users, Star, Plus, Pencil } from "lucide-react"
 import { LEVEL_META, type ScholarshipLevel } from "@/types/scholarship"
 import { AdminScholarshipToggle } from "./toggle"
 import { SyncFeedButton } from "./sync-button"
@@ -134,9 +134,16 @@ export default async function AdminScholarshipsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <Link href={`/scholarships/${s.id}`}
+                        {/* Edit */}
+                        <Link href={`/admin/scholarships/${s.id}/edit`}
                           className="rounded p-1.5 hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
-                          title="Preview">
+                          title="Edit program">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Link>
+                        {/* Preview on public site */}
+                        <Link href={`/opportunities/${s.id}`} target="_blank"
+                          className="rounded p-1.5 hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+                          title="View on site">
                           <GraduationCap className="h-3.5 w-3.5" />
                         </Link>
                         <AdminScholarshipToggle
