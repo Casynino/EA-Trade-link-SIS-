@@ -19,7 +19,7 @@ import { canApplyForOpp, requiredRoleForOpp } from "@/lib/opp-access"
 import { WrongRoleBlock } from "@/components/wrong-role-block"
 
 const FALLBACK_IMAGES: Record<string, string> = {
-  SCHOLARSHIP:      "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1600&auto=format&fit=crop&q=80",
+  SCHOLARSHIP:      "https://images.unsplash.com/photo-1571260899304-425eee4c7efc?w=1600&auto=format&fit=crop&q=80",
   JOB:              "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1600&auto=format&fit=crop&q=80",
   BUSINESS_VISA:    "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1600&auto=format&fit=crop&q=80",
   FACTORY_VISIT:    "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1600&auto=format&fit=crop&q=80",
