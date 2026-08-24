@@ -271,20 +271,30 @@ export function ApplyForm({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Submission failed")
 
-      // Attach uploaded files to the application
+      // Attach uploaded files to the application.
+      // `type` carries this opportunity's own document slot id so admin views can
+      // group/filter reliably; the label stays in the file name for readability.
       const docsToSave = Object.entries(uploadedFiles)
         .filter(([, v]) => v !== null)
         .map(([slotId, v]) => {
           const docDef = requiredDocs.find(d => d.id === slotId)
-          return { url: v!.url, name: v!.name, type: docDef?.label ?? "OTHER" }
+          return { url: v!.url, name: v!.name, type: slotId, label: docDef?.label ?? slotId }
         })
 
       if (docsToSave.length > 0) {
-        await fetch(`/api/applications/${data.id}`, {
+        // Must not fail silently — otherwise the applicant sees a success screen
+        // for an application that has none of their documents attached.
+        const docRes = await fetch(`/api/applications/${data.id}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ documents: docsToSave }),
         })
+        if (!docRes.ok) {
+          throw new Error(
+            "Your application was created, but the documents could not be attached. " +
+            "Please open it from your dashboard and upload them again.",
+          )
+        }
       }
 
       setSubmitted({ id: data.id })

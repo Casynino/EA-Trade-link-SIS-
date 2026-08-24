@@ -30,14 +30,18 @@ export default async function AdminStudyApplicationsPage() {
   if (!user || !["ADMIN", "SUPER_ADMIN"].includes(user.role)) redirect("/dashboard")
 
   const apps = await db.studyApplication.findMany({
-    include: { user: { select: { name: true, email: true } } },
+    include: {
+      user: { select: { name: true, email: true } },
+      matchedOpportunity: { select: { title: true, organization: true } },
+    },
     orderBy: [{ slaBreached: "desc" }, { createdAt: "desc" }],
   })
 
   const counts = {
     total: apps.length,
-    pending: apps.filter(a => ["SUBMITTED", "UNDER_REVIEW"].includes(a.status)).length,
-    matched: apps.filter(a => a.status === "MATCHED").length,
+    // Flow A cases that still have no programme assigned — these need an admin match.
+    pending: apps.filter(a => !a.matchedOpportunityId && !["REJECTED", "CANCELLED"].includes(a.status)).length,
+    matched: apps.filter(a => !!a.matchedOpportunityId).length,
     sla: apps.filter(a => a.slaBreached).length,
   }
 
@@ -59,7 +63,7 @@ export default async function AdminStudyApplicationsPage() {
         </div>
         <div className="ea-card ea-stat">
           <div className="ea-stat-icon bg-amber-50"><Clock className="h-5 w-5 text-amber-600" /></div>
-          <div><p className="ea-stat-value">{counts.pending}</p><p className="ea-stat-label">Pending Review</p></div>
+          <div><p className="ea-stat-value">{counts.pending}</p><p className="ea-stat-label">Awaiting Match</p></div>
         </div>
         <div className="ea-card ea-stat">
           <div className="ea-stat-icon bg-indigo-50"><GraduationCap className="h-5 w-5 text-indigo-600" /></div>
@@ -98,6 +102,23 @@ export default async function AdminStudyApplicationsPage() {
                   </p>
                   {app.preferredIntake && (
                     <p className="text-xs text-muted-foreground">Intake: {app.preferredIntake}</p>
+                  )}
+                  {/* Flow A: show which programme this student was matched to, or flag
+                      that they are still waiting for one. */}
+                  {app.matchedOpportunity ? (
+                    <p className="text-xs mt-1 flex items-center gap-1 text-emerald-600">
+                      <CheckCircle2 className="h-3 w-3 shrink-0" />
+                      <span className="truncate">
+                        Matched: {app.matchedOpportunity.title}
+                        {app.matchedOpportunity.organization ? ` · ${app.matchedOpportunity.organization}` : ""}
+                      </span>
+                    </p>
+                  ) : (
+                    !["REJECTED", "CANCELLED"].includes(app.status) && (
+                      <p className="text-xs mt-1 flex items-center gap-1 text-amber-600">
+                        <AlertCircle className="h-3 w-3 shrink-0" /> Awaiting programme match
+                      </p>
+                    )
                   )}
                 </div>
                 <div className="flex items-center gap-2.5 shrink-0">

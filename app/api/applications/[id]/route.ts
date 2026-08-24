@@ -15,7 +15,7 @@ export async function POST(
   if (!app) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   const body = await req.json()
-  const docs: { url: string; name: string; type: string }[] = body.documents ?? []
+  const docs: { url: string; name: string; type: string; label?: string }[] = body.documents ?? []
 
   const created = await Promise.all(
     docs.map((doc) =>
@@ -25,7 +25,10 @@ export async function POST(
           applicationId: id,
           fileName: doc.name,
           fileUrl: doc.url,
+          // The opportunity's own document slot id — stable, safe to group/filter on.
           documentType: doc.type ?? "OTHER",
+          // The human-readable requirement name, shown to admins.
+          notes: doc.label ?? null,
           mimeType: doc.name.endsWith(".pdf") ? "application/pdf" : "image/*",
         },
       })

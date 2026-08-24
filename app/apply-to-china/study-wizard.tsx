@@ -280,10 +280,12 @@ export function StudyWizard({ userId, userEmail, publishedCount = 0 }: {
             {publishedCount > 0 && (
               <p className="mt-3 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
                 Already know which programme you want?{" "}
-                <Link href="/opportunities?type=SCHOLARSHIP" className="underline" style={{ color: "#D4AF37" }}>
+                <Link
+                  href={userId ? "/scholarships" : "/auth/student/login?redirect=/scholarships"}
+                  className="underline" style={{ color: "#D4AF37" }}>
                   Browse our {publishedCount} published programme{publishedCount === 1 ? "" : "s"}
                 </Link>{" "}
-                and apply to it directly.
+                and apply to one directly.
               </p>
             )}
           </div>

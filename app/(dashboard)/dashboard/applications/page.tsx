@@ -73,7 +73,11 @@ export default async function ApplicationsPage() {
       orderBy: { createdAt: "desc" },
     }),
     db.visaApplication.findMany({ where: { userId: uid }, orderBy: { createdAt: "desc" } }),
-    db.studyApplication.findMany({ where: { userId: uid }, orderBy: { createdAt: "desc" } }),
+    db.studyApplication.findMany({
+      where: { userId: uid },
+      include: { matchedOpportunity: { select: { title: true, organization: true, type: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
     db.scholarshipApplication.findMany({
       where: { userId: uid },
       include: { scholarship: { select: { title: true, level: true } } },
@@ -94,12 +98,22 @@ export default async function ApplicationsPage() {
       oppType: "BUSINESS_VISA", status: v.status, date: v.createdAt,
       slaBreached: v.slaBreached, href: `/dashboard/applications/${v.id}`,
     })),
-    ...studyApps.map((s) => ({
-      id: s.id, type: "study" as const,
-      title: `Study in China — ${s.degreeLevel}`, org: s.preferredUniversities ?? "EA Trade Link",
-      oppType: "SCHOLARSHIP", status: s.status, date: s.createdAt,
-      slaBreached: s.slaBreached, href: `/dashboard/applications/${s.id}`,
-    })),
+    ...studyApps.map((s) => {
+      // Flow A: once an admin has matched the student AND advanced the case,
+      // show the real programme they were matched to instead of the generic label.
+      const revealed =
+        !!s.matchedOpportunity &&
+        ["MATCHED", "ACCEPTED", "APPROVED", "PAYMENT_PENDING", "PAYMENT_COMPLETED", "PROCESSING", "COMPLETED"].includes(s.status)
+      return {
+        id: s.id, type: "study" as const,
+        title: revealed ? s.matchedOpportunity!.title : `Study in China — ${s.degreeLevel}`,
+        org: revealed
+          ? s.matchedOpportunity!.organization
+          : (s.preferredUniversities || "Being matched by our team"),
+        oppType: "SCHOLARSHIP", status: s.status, date: s.createdAt,
+        slaBreached: s.slaBreached, href: `/dashboard/applications/${s.id}`,
+      }
+    }),
     ...scholApps.map((sc) => ({
       id: sc.id, type: "scholarship" as const,
       title: sc.scholarship.title, org: `${sc.scholarship.level} Scholarship`,

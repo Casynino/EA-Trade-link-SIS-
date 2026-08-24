@@ -111,7 +111,11 @@ async function findApp(id: string): Promise<NormalisedApp | null> {
       userId: app.userId,
       extraFields: dynFields,
       documents: app.documents.map(d => ({
-        id: d.id, name: d.fileName, type: d.documentType, url: d.fileUrl, createdAt: d.createdAt,
+        id: d.id, name: d.fileName,
+        // `notes` holds the requirement label the applicant uploaded against;
+        // fall back to the raw slot id for older rows that predate it.
+        type: d.notes || d.documentType,
+        url: d.fileUrl, createdAt: d.createdAt,
       })),
       opportunityDetails: {
         id: app.opportunity.id,

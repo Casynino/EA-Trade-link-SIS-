@@ -55,6 +55,15 @@ export function EditOpportunityForm({ opp }: { opp: Record<string, unknown> }) {
 
   function changeType(t: string) {
     setType(t)
+    // Changing the type on an EXISTING opportunity used to silently wipe every
+    // document requirement the admin had customised. Ask before replacing them.
+    if (docs.length > 0) {
+      const replace = window.confirm(
+        `Replace the current document requirements with the defaults for "${t.replace(/_/g, " ")}"?\n\n` +
+        `Click Cancel to keep the documents you have already configured.`,
+      )
+      if (!replace) return
+    }
     setDocs(getDefaultDocs(t))
     setFields(getDefaultFields(t))
   }
