@@ -77,6 +77,8 @@ interface NormalisedApp {
   extraFields: { label: string; value: string }[]
   // documents (from Document[] model)
   documents: { id: string; name: string; type: string; url: string; createdAt: Date }[]
+  // opportunity context (for standard Application linked to Opportunity)
+  opportunityDetails?: { id: string; title: string; org: string; location: string; level?: string | null; type: string }
 }
 
 async function findApp(id: string): Promise<NormalisedApp | null> {
@@ -110,6 +112,14 @@ async function findApp(id: string): Promise<NormalisedApp | null> {
       documents: app.documents.map(d => ({
         id: d.id, name: d.fileName, type: d.documentType, url: d.fileUrl, createdAt: d.createdAt,
       })),
+      opportunityDetails: {
+        id: app.opportunity.id,
+        title: app.opportunity.title,
+        org: app.opportunity.organization ?? "",
+        location: app.opportunity.location ?? "",
+        level: app.opportunity.degreeLevel ?? null,
+        type: app.opportunity.type,
+      },
     }
   }
 
@@ -153,7 +163,7 @@ async function findApp(id: string): Promise<NormalisedApp | null> {
   // 3. StudyApplication model
   const study = await db.studyApplication.findUnique({
     where: { id },
-    include: { user: true },
+    include: { user: true, documents: true },
   })
   if (study) {
     return {
@@ -182,7 +192,9 @@ async function findApp(id: string): Promise<NormalisedApp | null> {
         { label: "Date of Birth",         value: study.dateOfBirth ?? "—" },
         { label: "Passport Number",       value: study.passportNumber ?? "—" },
       ].filter(f => f.value && f.value !== "—"),
-      documents: [],
+      documents: (study.documents ?? []).map((d: any) => ({
+        id: d.id, name: d.fileName, type: d.documentType, url: d.fileUrl, createdAt: d.createdAt,
+      })),
     }
   }
 
@@ -371,6 +383,43 @@ export default async function AdminApplicationCasePage({
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
 
+          {/* Opportunity Applied For — only for the unified Application model */}
+          {app.opportunityDetails && (
+            <div className="rounded-2xl p-5 space-y-3"
+              style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.2)" }}>
+              <div className="flex items-center gap-2 mb-1">
+                <GraduationCap className="h-4 w-4" style={{ color: "#D4AF37" }} />
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "#D4AF37" }}>Opportunity Applied For</p>
+              </div>
+              <p className="text-base font-black text-white leading-snug">{app.opportunityDetails.title}</p>
+              <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                {app.opportunityDetails.org && (
+                  <span className="flex items-center gap-1">
+                    <Building2 className="h-3 w-3" />{app.opportunityDetails.org}
+                  </span>
+                )}
+                {app.opportunityDetails.location && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />{app.opportunityDetails.location}
+                  </span>
+                )}
+                {app.opportunityDetails.level && (
+                  <span className="flex items-center gap-1">
+                    <GraduationCap className="h-3 w-3" />{app.opportunityDetails.level}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <Hash className="h-3 w-3" />{app.opportunityDetails.type.replace(/_/g, " ")}
+                </span>
+              </div>
+              <Link href={`/opportunities/${app.opportunityDetails.id}`} target="_blank"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 transition-colors"
+                style={{ background: "rgba(212,175,55,0.12)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.25)" }}>
+                <Eye className="h-3 w-3" />View Opportunity Page
+              </Link>
+            </div>
+          )}
+
           {/* Applicant info */}
           <Section title="Applicant Information" icon={User}>
             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
@@ -380,13 +429,17 @@ export default async function AdminApplicationCasePage({
               <InfoRow icon={Globe}    label="Nationality"  value={app.userNationality ?? "Not provided"} />
               <InfoRow icon={Calendar} label="Date Applied" value={new Date(app.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })} />
               <InfoRow icon={Hash}     label="Category"     value={app.category} />
-              {app.degreeLevel  && <InfoRow icon={GraduationCap} label="Degree Level"   value={app.degreeLevel} />}
+              {app.degreeLevel  && (
+                <InfoRow icon={GraduationCap}
+                  label={app.opportunityDetails?.type === "SCHOLARSHIP" ? "Current Qualification" : "Degree Level"}
+                  value={app.degreeLevel} />
+              )}
               {app.fieldOfStudy && <InfoRow icon={GraduationCap} label="Field of Study" value={app.fieldOfStudy} />}
-              {app.gpa          && <InfoRow icon={GraduationCap} label="GPA"            value={app.gpa} />}
+              {app.gpa          && <InfoRow icon={GraduationCap} label="GPA / Score"     value={app.gpa} />}
             </div>
             {app.coverLetter && (
               <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Cover Letter / Motivation</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Personal Statement / Motivation Letter</p>
                 <div className="rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap"
                   style={{ background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   {app.coverLetter}
@@ -395,7 +448,9 @@ export default async function AdminApplicationCasePage({
             )}
             {app.experience && (
               <div className="mt-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Experience / Purpose</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  {app.opportunityDetails?.type === "SCHOLARSHIP" ? "Academic Background" : "Experience / Purpose"}
+                </p>
                 <div className="rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap"
                   style={{ background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   {app.experience}
