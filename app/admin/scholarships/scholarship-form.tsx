@@ -91,7 +91,18 @@ export function ScholarshipForm({
 
   // Dynamic lists
   const [majors, setMajors] = useState<string[]>(initialData?.majors ?? [""])
-  const [documents, setDocuments] = useState<string[]>(initialData?.requirements?.documents ?? [""])
+  const DEFAULT_DOCUMENTS = [
+    "All Pages of Passport (12 Months Minimum Validity)",
+    "High School Certificate & Transcript",
+    "Language Proficiency Certificate",
+    "Non-Criminal Record Certificate",
+    "Personal CV/Resume",
+    "Physical Examination Report",
+    "Bank Statement (at least 50,000 RMB or equivalent)",
+    "Self-Introduction Video (1–3 minutes duration)",
+    "Application Form",
+  ]
+  const [documents, setDocuments] = useState<string[]>(initialData?.requirements?.documents ?? DEFAULT_DOCUMENTS)
   const [eligibility, setEligibility] = useState<string[]>(initialData?.requirements?.eligibility ?? [""])
   const [extraInfo, setExtraInfo] = useState<string[]>(initialData?.requirements?.extraInfo ?? [])
   const [highlights, setHighlights] = useState<string[]>(initialData?.applicationHighlights ?? [""])
