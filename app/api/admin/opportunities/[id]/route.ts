@@ -34,6 +34,19 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const { id } = await params
+
+  // Cascade-delete related records manually (no onDelete:Cascade in schema)
+  const apps = await db.application.findMany({ where: { opportunityId: id }, select: { id: true } })
+  const appIds = apps.map(a => a.id)
+
+  if (appIds.length > 0) {
+    await db.document.deleteMany({ where: { applicationId: { in: appIds } } })
+    await db.message.deleteMany({ where: { applicationId: { in: appIds } } })
+    await db.payment.deleteMany({ where: { applicationId: { in: appIds } } })
+    await db.notification.deleteMany({ where: { link: { contains: appIds[0] } } }) // best-effort
+    await db.application.deleteMany({ where: { opportunityId: id } })
+  }
+
   await db.opportunity.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }
