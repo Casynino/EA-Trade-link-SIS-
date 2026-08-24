@@ -140,6 +140,8 @@ model Opportunity {
   updatedAt        DateTime @updatedAt
 
   applications Application[]
+  // Study applications an admin has matched to this opportunity (Flow A)
+  matchedStudyApplications StudyApplication[]
 
   @@map("opportunities")
 }
@@ -379,6 +381,12 @@ model StudyApplication {
   matchedUniversities String    @default("[]") // JSON: array of university names
   admissionLetter     String?   // file URL
   preAdmissionOffer   String?   // file URL
+
+  // Admin-assigned opportunity (Flow A: admin matches student to a published opportunity).
+  // Null until an admin matches them. Student only sees these details after approval.
+  matchedOpportunityId String?
+  matchedOpportunity   Opportunity? @relation(fields: [matchedOpportunityId], references: [id], onDelete: SetNull)
+  matchedAt            DateTime?
 
   // Fees
   registrationFee     Float?

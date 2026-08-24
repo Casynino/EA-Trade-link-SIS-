@@ -6,7 +6,7 @@ import {
   ArrowLeft, CheckCircle2, Clock, AlertCircle, FileText, XCircle, Loader2,
   ExternalLink, Edit3, ShieldCheck, CreditCard, Download, BadgeCheck,
   MessageSquare, Globe2, Phone, Mail, Building2, Plane, GraduationCap,
-  User2, Hash, CalendarDays, MapPin,
+  User2, Hash, CalendarDays, MapPin, ArrowRight,
 } from "lucide-react"
 import { MessageThread } from "./message-thread"
 import { PayNowButton } from "@/components/payments/pay-now-button"
@@ -54,6 +54,23 @@ interface NormApp {
   extraFields: { label: string; value: string }[]
   documents: { id: string; name: string; url: string; type: string }[]
   messages: { id: string; content: string; isAdmin: boolean; createdAt: Date }[]
+  /**
+   * The opportunity this case is tied to.
+   * Flow B: chosen by the student at apply time — always visible.
+   * Flow A: assigned by an admin after review — only revealed once approved/matched.
+   */
+  matchedOpportunity?: {
+    id: string
+    title: string
+    organization: string
+    location: string
+    degreeLevel: string | null
+    description: string
+    benefits: string | null
+    requirements: string | null
+  } | null
+  /** True for Flow A cases an admin has not matched yet. */
+  awaitingMatch?: boolean
 }
 
 async function findApp(id: string, userId: string): Promise<NormApp | null> {
@@ -112,9 +129,16 @@ async function findApp(id: string, userId: string): Promise<NormApp | null> {
 
   const s = await db.studyApplication.findFirst({
     where: { id, userId },
-    include: { documents: true, messages: { orderBy: { createdAt: "asc" } } },
+    include: { documents: true, messages: { orderBy: { createdAt: "asc" } }, matchedOpportunity: true },
   })
-  if (s) return {
+  if (s) {
+  // Flow A: the applicant only sees which programme they were matched to once an
+  // admin has actually matched AND moved the case to a matched/approved status.
+  const matchRevealed =
+    !!s.matchedOpportunity &&
+    ["MATCHED", "ACCEPTED", "APPROVED", "PAYMENT_PENDING", "PAYMENT_COMPLETED", "PROCESSING", "COMPLETED"].includes(s.status)
+
+  return {
     id: s.id, modelType: "study",
     title: `Study in China — ${s.degreeLevel}`,
     subtitle: `${s.fieldOfStudy} · ${s.nationality}`,
@@ -138,6 +162,20 @@ async function findApp(id: string, userId: string): Promise<NormApp | null> {
     ],
     documents: s.documents.map((d) => ({ id: d.id, name: d.fileName, url: d.fileUrl, type: d.documentType })),
     messages: s.messages.map((m) => ({ id: m.id, content: m.content, isAdmin: m.isAdminMessage, createdAt: m.createdAt })),
+    matchedOpportunity: matchRevealed && s.matchedOpportunity
+      ? {
+          id: s.matchedOpportunity.id,
+          title: s.matchedOpportunity.title,
+          organization: s.matchedOpportunity.organization,
+          location: s.matchedOpportunity.location,
+          degreeLevel: s.matchedOpportunity.degreeLevel,
+          description: s.matchedOpportunity.description,
+          benefits: s.matchedOpportunity.benefits,
+          requirements: s.matchedOpportunity.requirements,
+        }
+      : null,
+    awaitingMatch: !matchRevealed,
+  }
   }
 
   const sc = await db.scholarshipApplication.findFirst({
@@ -651,6 +689,75 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
 
           {/* LEFT — main content */}
           <div className="space-y-5 lg:col-span-2">
+
+            {/* FLOW A — the programme our team matched this student to.
+                Only rendered once an admin has matched AND advanced the case. */}
+            {app.matchedOpportunity && (
+              <GlassCard className="p-6" glow="#D4AF37">
+                <SectionTitle icon={GraduationCap} color="#D4AF37">You Have Been Matched</SectionTitle>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-lg font-black text-white leading-snug">{app.matchedOpportunity.title}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
+                      {app.matchedOpportunity.organization && (
+                        <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{app.matchedOpportunity.organization}</span>
+                      )}
+                      {app.matchedOpportunity.location && (
+                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{app.matchedOpportunity.location}</span>
+                      )}
+                      {app.matchedOpportunity.degreeLevel && (
+                        <span className="flex items-center gap-1"><GraduationCap className="h-3 w-3" />{app.matchedOpportunity.degreeLevel}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {app.matchedOpportunity.description && (
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "rgba(255,255,255,0.65)" }}>
+                      {app.matchedOpportunity.description}
+                    </p>
+                  )}
+
+                  {app.matchedOpportunity.benefits && (
+                    <div className="rounded-xl p-4" style={{ background: "rgba(52,211,153,0.06)", border: "1px solid rgba(52,211,153,0.18)" }}>
+                      <p className="text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: "#34d399" }}>What&apos;s Covered</p>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "rgba(255,255,255,0.65)" }}>
+                        {app.matchedOpportunity.benefits}
+                      </p>
+                    </div>
+                  )}
+
+                  {app.matchedOpportunity.requirements && (
+                    <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                      <p className="text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>Requirements</p>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "rgba(255,255,255,0.65)" }}>
+                        {app.matchedOpportunity.requirements}
+                      </p>
+                    </div>
+                  )}
+
+                  <Link href={`/opportunities/${app.matchedOpportunity.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold"
+                    style={{ background: "rgba(212,175,55,0.12)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.28)" }}>
+                    View full programme details <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              </GlassCard>
+            )}
+
+            {/* FLOW A — still being assessed, no programme assigned yet */}
+            {app.modelType === "study" && app.awaitingMatch && !isRejected && (
+              <GlassCard className="p-6" glow="#a78bfa">
+                <SectionTitle icon={Clock} color="#a78bfa">Being Matched to a Programme</SectionTitle>
+                <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.6)" }}>
+                  Our education team is assessing your academic profile against the scholarships and
+                  universities we work with. Once we find the programme that fits you best, the full
+                  details — university, degree, coverage, and next steps — will appear right here.
+                </p>
+                <p className="text-xs mt-3" style={{ color: "rgba(255,255,255,0.35)" }}>
+                  You don&apos;t need to do anything right now. We&apos;ll notify you as soon as there&apos;s an update.
+                </p>
+              </GlassCard>
+            )}
 
             {/* Timeline */}
             <GlassCard className="p-6" glow={st.color}>

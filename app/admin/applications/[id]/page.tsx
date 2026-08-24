@@ -9,6 +9,7 @@ import {
   MessageSquare,
 } from "lucide-react"
 import { AdminApplicationActions } from "./actions"
+import { MatchOpportunity, type MatchableOpportunity } from "./match-opportunity"
 
 export const dynamic = "force-dynamic"
 
@@ -163,7 +164,7 @@ async function findApp(id: string): Promise<NormalisedApp | null> {
   // 3. StudyApplication model
   const study = await db.studyApplication.findUnique({
     where: { id },
-    include: { user: true, documents: true },
+    include: { user: true, documents: true, matchedOpportunity: true },
   })
   if (study) {
     return {
@@ -195,6 +196,17 @@ async function findApp(id: string): Promise<NormalisedApp | null> {
       documents: (study.documents ?? []).map((d: any) => ({
         id: d.id, name: d.fileName, type: d.documentType, url: d.fileUrl, createdAt: d.createdAt,
       })),
+      // Flow A: null until an admin matches this applicant to a published opportunity
+      opportunityDetails: study.matchedOpportunity
+        ? {
+            id: study.matchedOpportunity.id,
+            title: study.matchedOpportunity.title,
+            org: study.matchedOpportunity.organization ?? "",
+            location: study.matchedOpportunity.location ?? "",
+            level: study.matchedOpportunity.degreeLevel ?? null,
+            type: study.matchedOpportunity.type,
+          }
+        : undefined,
     }
   }
 
@@ -243,6 +255,21 @@ export default async function AdminApplicationCasePage({
 
   const app = await findApp(id)
   if (!app) notFound()
+
+  // FLOW A: general study applications arrive with no opportunity attached.
+  // Load the published opportunities so an admin can match the applicant to one.
+  let matchableOpportunities: MatchableOpportunity[] = []
+  if (app.modelType === "study") {
+    const opps = await db.opportunity.findMany({
+      where: { isActive: true, type: { in: ["SCHOLARSHIP", "EXCHANGE"] } },
+      orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+      select: {
+        id: true, title: true, organization: true, location: true,
+        type: true, degreeLevel: true, fieldOfStudy: true,
+      },
+    })
+    matchableOpportunities = opps
+  }
 
   // Fetch messages for the thread
   let threadMessages: { id: string; content: string; isAdmin: boolean; senderName: string; createdAt: Date }[] = []
@@ -383,13 +410,33 @@ export default async function AdminApplicationCasePage({
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5">
 
-          {/* Opportunity Applied For — only for the unified Application model */}
+          {/* FLOW A — general application still waiting for an admin to match it */}
+          {app.modelType === "study" && !app.opportunityDetails && (
+            <div className="rounded-2xl p-5 flex items-start gap-3"
+              style={{ background: "rgba(167,139,250,0.07)", border: "1px solid rgba(167,139,250,0.25)" }}>
+              <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" style={{ color: "#a78bfa" }} />
+              <div>
+                <p className="text-sm font-bold" style={{ color: "#a78bfa" }}>General Application — Not Yet Matched</p>
+                <p className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  This student submitted their academic profile without choosing a programme.
+                  Review their qualifications and documents below, then use
+                  <strong style={{ color: "rgba(255,255,255,0.75)" }}> Match to Opportunity</strong> on
+                  the right to assign the programme that fits them best.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* The opportunity this case is tied to. Flow B = chosen by the student,
+              Flow A = assigned by an admin after review. */}
           {app.opportunityDetails && (
             <div className="rounded-2xl p-5 space-y-3"
               style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.2)" }}>
               <div className="flex items-center gap-2 mb-1">
                 <GraduationCap className="h-4 w-4" style={{ color: "#D4AF37" }} />
-                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "#D4AF37" }}>Opportunity Applied For</p>
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "#D4AF37" }}>
+                  {app.modelType === "study" ? "Matched Opportunity (assigned by admin)" : "Opportunity Applied For"}
+                </p>
               </div>
               <p className="text-base font-black text-white leading-snug">{app.opportunityDetails.title}</p>
               <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
@@ -633,6 +680,16 @@ export default async function AdminApplicationCasePage({
               </div>
             </div>
           </div>
+
+          {/* FLOW A — match a general study application to a published opportunity */}
+          {app.modelType === "study" && (
+            <MatchOpportunity
+              applicationId={app.id}
+              opportunities={matchableOpportunities}
+              currentMatchId={app.opportunityDetails?.id ?? null}
+              currentMatchTitle={app.opportunityDetails?.title ?? null}
+            />
+          )}
 
           <AdminApplicationActions application={actionsApp} adminId={admin.id} />
         </div>

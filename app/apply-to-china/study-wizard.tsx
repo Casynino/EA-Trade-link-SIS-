@@ -105,9 +105,24 @@ const FIELDS = [
   "Social Sciences", "Architecture & Urban Planning", "Chinese Studies", "Other",
 ]
 
-const INTAKES = ["September 2025", "February 2026", "September 2026", "February 2027"]
+// Intakes are generated from the current date so the list never goes stale.
+function getIntakes(): string[] {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth() // 0-indexed
+  const out: string[] = []
+  // Candidate intakes: Feb and Sep of this year and the next two years
+  for (let y = year; y <= year + 2; y++) {
+    for (const [m, label] of [[1, "February"], [8, "September"]] as const) {
+      // Skip intakes that have already started (allow ~2 months lead time)
+      if (y === year && m < month + 2) continue
+      out.push(`${label} ${y}`)
+    }
+  }
+  return out.slice(0, 4)
+}
 
-interface DocEntry { key: string; ready: boolean; fileName: string }
+interface DocEntry { key: string; ready: boolean; fileName: string; fileUrl: string; uploading?: boolean }
 
 interface FormData {
   // Step 1
@@ -135,7 +150,9 @@ const EMPTY: FormData = {
   documents: [],
 }
 
-export function StudyWizard({ userId, userEmail }: { userId: string | null; userEmail: string | null }) {
+export function StudyWizard({ userId, userEmail, publishedCount = 0 }: {
+  userId: string | null; userEmail: string | null; publishedCount?: number
+}) {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [form, setForm] = useState<FormData>({ ...EMPTY, contactEmail: userEmail ?? "" })
@@ -149,8 +166,30 @@ export function StudyWizard({ userId, userEmail }: { userId: string | null; user
   // When degree changes, reset document checklist
   const setDegree = (deg: string) => {
     const reqs = getDocRequirements(deg)
-    const docs: DocEntry[] = reqs.map(r => ({ key: r.key, ready: false, fileName: "" }))
+    const docs: DocEntry[] = reqs.map(r => ({ key: r.key, ready: false, fileName: "", fileUrl: "" }))
     setForm(f => ({ ...f, degreeLevel: deg, documents: docs }))
+  }
+
+  // Upload a real file for a document slot via the shared /api/upload route.
+  const uploadDoc = async (key: string, file: File) => {
+    setForm(f => ({ ...f, documents: f.documents.map(d => d.key === key ? { ...d, uploading: true } : d) }))
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      const res = await fetch("/api/upload", { method: "POST", body: fd })
+      if (!res.ok) throw new Error("Upload failed")
+      const data = await res.json()
+      const url = data.url ?? data.fileUrl ?? ""
+      setForm(f => ({
+        ...f,
+        documents: f.documents.map(d => d.key === key
+          ? { ...d, ready: true, fileName: file.name, fileUrl: url, uploading: false }
+          : d),
+      }))
+    } catch {
+      setError(`Could not upload ${file.name}. Please try again.`)
+      setForm(f => ({ ...f, documents: f.documents.map(d => d.key === key ? { ...d, uploading: false } : d) }))
+    }
   }
 
   const canNext = () => {
@@ -164,12 +203,22 @@ export function StudyWizard({ userId, userEmail }: { userId: string | null; user
 
   const handleSubmit = async () => {
     if (!certified) return
+    // An account is required so the application is saved and trackable.
+    // Previously an unauthenticated submit silently discarded everything.
+    if (!userId) {
+      router.push(`/auth/student/register?redirect=${encodeURIComponent("/apply-to-china")}`)
+      return
+    }
     setSubmitting(true)
     setError("")
     try {
       const payload = {
         ...form,
         documentsJson: JSON.stringify(form.documents),
+        // Real uploaded files, persisted as StudyDocument rows
+        uploadedDocuments: form.documents
+          .filter(d => d.fileUrl)
+          .map(d => ({ key: d.key, fileName: d.fileName, fileUrl: d.fileUrl })),
         documents: undefined,
       }
       const res = await fetch("/api/study/apply", {
@@ -177,10 +226,8 @@ export function StudyWizard({ userId, userEmail }: { userId: string | null; user
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
-      if (!res.ok) {
-        const d = await res.json()
-        throw new Error(d.error || "Submission failed")
-      }
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || "Submission failed")
       setSubmitted(true)
     } catch (e: any) {
       setError(e.message)
@@ -220,12 +267,23 @@ export function StudyWizard({ userId, userEmail }: { userId: string | null; user
             </div>
             <h1 className="text-2xl font-black text-white mb-2">Apply to Study in China</h1>
             <p className="text-sm max-w-md mx-auto" style={{ color: "rgba(255,255,255,0.45)" }}>
-              Our experts personally review your application and match you to the best scholarship and university.
+              Submit your academic profile once. Our experts review it, assess your eligibility,
+              and match you to the scholarship and university that fit you best — you don&apos;t
+              need to choose a programme yourself.
             </p>
             {!userId && (
               <p className="mt-3 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
                 Already have an account?{" "}
-                <Link href="/login?callbackUrl=/apply-to-china" className="underline" style={{ color: "#38bdf8" }}>Sign in</Link>
+                <Link href="/auth/student/login?redirect=/apply-to-china" className="underline" style={{ color: "#38bdf8" }}>Sign in</Link>
+              </p>
+            )}
+            {publishedCount > 0 && (
+              <p className="mt-3 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                Already know which programme you want?{" "}
+                <Link href="/opportunities?type=SCHOLARSHIP" className="underline" style={{ color: "#D4AF37" }}>
+                  Browse our {publishedCount} published programme{publishedCount === 1 ? "" : "s"}
+                </Link>{" "}
+                and apply to it directly.
               </p>
             )}
           </div>
@@ -266,7 +324,7 @@ export function StudyWizard({ userId, userEmail }: { userId: string | null; user
                 {step === 1 && <Step1 form={form} setDegree={setDegree} />}
                 {step === 2 && <Step2 form={form} set={set as any} />}
                 {step === 3 && <Step3 form={form} set={set as any} />}
-                {step === 4 && <Step4 form={form} docReqs={docReqs} setDoc={(key, field, val) => {
+                {step === 4 && <Step4 form={form} docReqs={docReqs} uploadDoc={uploadDoc} setDoc={(key, field, val) => {
                   setForm(f => ({
                     ...f,
                     documents: f.documents.map(d => d.key === key ? { ...d, [field]: val } : d)
@@ -306,7 +364,7 @@ export function StudyWizard({ userId, userEmail }: { userId: string | null; user
           </div>
 
           <p className="text-center text-xs mt-6" style={{ color: "rgba(255,255,255,0.2)" }}>
-            Your application has been successfully received by the International Education Processing Center. It is now under review. You will receive a response within 5 days.
+            Free to apply · Reviewed by the International Education Processing Center · Response within 5 days
           </p>
         </div>
       </div>
@@ -393,7 +451,7 @@ function Step2({ form, set }: { form: FormData; set: (k: string, v: string) => v
           <div>
             <label className="block text-sm font-semibold text-white mb-1.5">Intended Intake <span style={{ color: "#38bdf8" }}>*</span></label>
             <div className="flex flex-wrap gap-2">
-              {INTAKES.map(i => (
+              {getIntakes().map(i => (
                 <button key={i} onClick={() => set("preferredIntake", i)}
                   className="rounded-full px-3 py-1.5 text-xs font-medium transition-all"
                   style={form.preferredIntake === i
@@ -492,28 +550,36 @@ function Step3({ form, set }: { form: FormData; set: (k: string, v: string) => v
 }
 
 // ── Step 4: Document Upload ────────────────────────────────────────────────────
-function Step4({ form, docReqs, setDoc }: {
+function Step4({ form, docReqs, setDoc, uploadDoc }: {
   form: FormData
   docReqs: DocReq[]
-  setDoc: (key: string, field: "ready" | "fileName", val: boolean | string) => void
+  setDoc: (key: string, field: "ready" | "fileName" | "fileUrl", val: boolean | string) => void
+  uploadDoc: (key: string, file: File) => Promise<void>
 }) {
+  const uploadedCount = form.documents.filter(d => d.fileUrl).length
   const readyCount = form.documents.filter(d => d.ready).length
   const requiredTotal = docReqs.filter(d => d.required).length
 
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-bold text-white mb-1">Document Checklist</h2>
+        <h2 className="text-lg font-bold text-white mb-1">Your Documents</h2>
         <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
-          Mark the documents you currently have. You can submit physical copies later via the admin portal.
+          Upload the documents you already have. Anything missing can be added later — our team
+          will send you a personalised upload link after reviewing your profile.
         </p>
       </div>
 
       <div className="flex items-center gap-3 rounded-xl p-3"
         style={{ background: "rgba(56,189,248,0.07)", border: "1px solid rgba(56,189,248,0.15)" }}>
-        <div className="text-2xl font-black" style={{ color: "#38bdf8" }}>{readyCount}</div>
+        <div className="text-2xl font-black" style={{ color: "#38bdf8" }}>{uploadedCount}</div>
         <div>
-          <p className="text-sm font-semibold text-white">documents marked ready</p>
+          <p className="text-sm font-semibold text-white">
+            document{uploadedCount === 1 ? "" : "s"} uploaded
+            {readyCount > uploadedCount && (
+              <span style={{ color: "rgba(255,255,255,0.4)" }}> · {readyCount - uploadedCount} marked ready</span>
+            )}
+          </p>
           <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>{requiredTotal} required · {docReqs.length - requiredTotal} optional</p>
         </div>
       </div>
@@ -522,18 +588,25 @@ function Step4({ form, docReqs, setDoc }: {
         {docReqs.map(req => {
           const entry = form.documents.find(d => d.key === req.key)
           const isReady = entry?.ready ?? false
+          const hasFile = !!entry?.fileUrl
+          const uploading = entry?.uploading ?? false
           return (
             <div key={req.key} className="rounded-xl p-4 transition-all"
-              style={isReady
-                ? { background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.25)" }
-                : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              style={hasFile
+                ? { background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.3)" }
+                : isReady
+                  ? { background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.25)" }
+                  : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <div className="flex items-start gap-3">
                 <button onClick={() => setDoc(req.key, "ready", !isReady)}
-                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-all"
-                  style={isReady
-                    ? { background: "#38bdf8", border: "none" }
-                    : { background: "transparent", border: "1.5px solid rgba(255,255,255,0.2)" }}>
-                  {isReady && <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "#05091a" }} />}
+                  disabled={hasFile}
+                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-all disabled:cursor-default"
+                  style={hasFile
+                    ? { background: "#34d399", border: "none" }
+                    : isReady
+                      ? { background: "#38bdf8", border: "none" }
+                      : { background: "transparent", border: "1.5px solid rgba(255,255,255,0.2)" }}>
+                  {(isReady || hasFile) && <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "#05091a" }} />}
                 </button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -541,16 +614,43 @@ function Step4({ form, docReqs, setDoc }: {
                     {req.required
                       ? <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}>Required</span>
                       : <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }}>Optional</span>}
+                    {hasFile && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(52,211,153,0.15)", color: "#34d399" }}>Uploaded</span>
+                    )}
                   </div>
                   {req.hint && <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>{req.hint}</p>}
-                  {isReady && (
-                    <input
-                      value={entry?.fileName ?? ""}
-                      onChange={e => setDoc(req.key, "fileName", e.target.value)}
-                      placeholder="File name or note (optional)"
-                      className="mt-2 w-full rounded-lg px-3 py-1.5 text-xs outline-none"
-                      style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(56,189,248,0.2)", color: "white" }}
-                    />
+
+                  {hasFile ? (
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <a href={entry!.fileUrl} target="_blank" rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold truncate max-w-[240px]"
+                        style={{ background: "rgba(52,211,153,0.12)", color: "#34d399", border: "1px solid rgba(52,211,153,0.25)" }}>
+                        <FileText className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{entry!.fileName}</span>
+                      </a>
+                      <button
+                        onClick={() => {
+                          setDoc(req.key, "fileUrl", "")
+                          setDoc(req.key, "fileName", "")
+                          setDoc(req.key, "ready", false)
+                        }}
+                        className="text-xs underline" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        Replace
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors"
+                      style={{ background: "rgba(56,189,248,0.1)", color: "#38bdf8", border: "1px solid rgba(56,189,248,0.22)" }}>
+                      <Upload className="h-3 w-3" />
+                      {uploading ? "Uploading…" : "Upload file"}
+                      <input type="file" className="hidden" disabled={uploading}
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.mp4,.mov"
+                        onChange={e => {
+                          const f = e.target.files?.[0]
+                          if (f) uploadDoc(req.key, f)
+                          e.target.value = ""
+                        }} />
+                    </label>
                   )}
                 </div>
               </div>
@@ -637,16 +737,20 @@ function Step5({ form, docReqs, certified, setCertified }: {
       {/* Documents summary */}
       <div>
         <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "rgba(255,255,255,0.3)" }}>
-          Documents ({readyDocs.length} marked ready)
+          Documents ({form.documents.filter(d => d.fileUrl).length} uploaded · {readyDocs.length} marked ready)
         </p>
         <div className="rounded-xl p-4 space-y-1" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
           {docReqs.map(req => {
-            const ready = form.documents.find(d => d.key === req.key)?.ready
+            const entry = form.documents.find(d => d.key === req.key)
+            const uploaded = !!entry?.fileUrl
+            const ready = entry?.ready
             return (
               <div key={req.key} className="flex items-center gap-2 text-xs">
-                <div className="h-2 w-2 rounded-full shrink-0" style={{ background: ready ? "#38bdf8" : "rgba(255,255,255,0.15)" }} />
-                <span style={{ color: ready ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)" }}>{req.label}</span>
-                {req.required && !ready && <span style={{ color: "rgba(239,68,68,0.7)" }}>(required)</span>}
+                <div className="h-2 w-2 rounded-full shrink-0"
+                  style={{ background: uploaded ? "#34d399" : ready ? "#38bdf8" : "rgba(255,255,255,0.15)" }} />
+                <span style={{ color: uploaded || ready ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.3)" }}>{req.label}</span>
+                {uploaded && <span style={{ color: "#34d399" }}>✓ uploaded</span>}
+                {req.required && !uploaded && !ready && <span style={{ color: "rgba(239,68,68,0.7)" }}>(required)</span>}
               </div>
             )
           })}
