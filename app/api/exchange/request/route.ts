@@ -15,6 +15,18 @@ const schema = z.object({
 export async function POST(req: Request) {
   try {
     const session = await auth()
+
+    // The only UI for this lives behind the dashboard auth guard, so an
+    // unauthenticated call is never legitimate. Without this the endpoint
+    // accepted anonymous name/phone/email writes with a null userId.
+    const userId = session?.user?.id
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Please sign in to submit an exchange request." },
+        { status: 401 },
+      )
+    }
+
     const body = await req.json()
     const parsed = schema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ error: "Invalid data" }, { status: 400 })
@@ -26,7 +38,7 @@ export async function POST(req: Request) {
       data: {
         ...parsed.data,
         currency: parsed.data.direction === "RMB_TO_TZS" ? "RMB" : "TZS",
-        userId: session?.user?.id ?? undefined,
+        userId,
         rateUsed: rateUsed ?? undefined,
         convertedAmount: rateUsed ? parsed.data.amount * rateUsed : undefined,
       },

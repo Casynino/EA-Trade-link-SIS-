@@ -24,6 +24,13 @@ const FULLY_PUBLIC = [
 const STUDENT_ONLY_PATHS  = ["/scholarships", "/apply-to-china"]
 const BUSINESS_ONLY_PATHS = ["/apply-visa", "/factory-visits", "/sourcing", "/visa", "/canton-fair"]
 
+// Application FORMS. An account is REQUIRED before these can be opened at all —
+// a guest must never be able to fill one in and only hit a wall at submit time.
+// Each entry names where to send a guest to create an account.
+const REQUIRES_ACCOUNT: { path: string; register: string }[] = [
+  { path: "/apply-to-china", register: "/auth/student/register" },
+]
+
 function getAccountType(userTypes?: string, role?: string): string {
   if (role && ["ADMIN", "SUPER_ADMIN"].includes(role)) return "ADMIN"
   try {
@@ -56,8 +63,19 @@ export default auth((req) => {
     return NextResponse.next()
   }
 
-  // 3. Unauthenticated → login with redirect
+  // 3. Unauthenticated → send them to create an account / sign in
   if (!isAuthenticated) {
+    // Application forms always require an account first — checked BEFORE the
+    // marketing-page allowance below, which would otherwise let guests in.
+    const formGate = REQUIRES_ACCOUNT.find(
+      r => pathname === r.path || pathname.startsWith(r.path + "/"),
+    )
+    if (formGate) {
+      const registerUrl = new URL(formGate.register, req.url)
+      registerUrl.searchParams.set("redirect", pathname)
+      return NextResponse.redirect(registerUrl)
+    }
+
     // Let unauthenticated users browse role-specific marketing pages
     const browseOk = [...STUDENT_ONLY_PATHS, ...BUSINESS_ONLY_PATHS]
     if (browseOk.some(p => pathname === p || pathname.startsWith(p + "/"))) {

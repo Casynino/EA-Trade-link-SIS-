@@ -118,15 +118,19 @@ export default async function DashboardPage() {
     take: 4,
   })
 
-  // ── Fetch direct apply links for service shortcuts ─────────────────────────
-  // These let "Apply for Visa" / "Apply to Study" go STRAIGHT to the form,
-  // bypassing the landing gallery page entirely.
-  const [visaOpp, scholarshipOpp] = await Promise.all([
-    db.opportunity.findFirst({ where: { isActive: true, type: "BUSINESS_VISA" }, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }], select: { id: true } }),
-    db.opportunity.findFirst({ where: { isActive: true, type: "SCHOLARSHIP"   }, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }], select: { id: true } }),
-  ])
-  const visaApplyHref       = visaOpp       ? `/apply/${visaOpp.id}`       : "/apply-visa"
-  const scholarshipApplyHref = scholarshipOpp ? `/apply/${scholarshipOpp.id}` : "/apply-to-china"
+  // ── Service shortcut links ────────────────────────────────────────────────
+  const visaOpp = await db.opportunity.findFirst({
+    where: { isActive: true, type: "BUSINESS_VISA" },
+    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+    select: { id: true },
+  })
+  const visaApplyHref = visaOpp ? `/apply/${visaOpp.id}` : "/apply-visa"
+
+  // FLOW A. "Apply to Study in China" is the GENERAL application — the student
+  // submits their academic profile and our team matches them to a programme.
+  // It must NEVER jump into one arbitrary published opportunity's form: that is
+  // FLOW B, reached deliberately via Browse Scholarships -> opportunity -> Apply Now.
+  const scholarshipApplyHref = "/apply-to-china"
 
   // ── Render role-specific dashboard ────────────────────────────────────────
   if (primaryType === "STUDENT") {
@@ -471,7 +475,9 @@ function OppList({ opps }: { opps: any[] }) {
         const Icon = OPP_ICON[opp.type] ?? Star
         const colorCls = OPP_COLOR[opp.type] ?? "bg-gray-500/15 text-gray-400"
         return (
-          <Link key={opp.id} href={`/apply/${opp.id}`}
+          // FLOW B always goes through the opportunity page first, so the student
+          // reads the full programme details before deciding to apply.
+          <Link key={opp.id} href={`/opportunities/${opp.id}`}
             className="flex items-center gap-4 px-5 py-4 hover:bg-muted/30 transition-colors group">
             <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${colorCls}`}>
               <Icon className="h-4 w-4" />

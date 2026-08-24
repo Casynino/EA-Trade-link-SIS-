@@ -5,6 +5,18 @@ import { db } from "@/lib/db"
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
+
+    // An account is required before any application is accepted. This route used
+    // to answer guests with {success:true} while persisting NOTHING — telling the
+    // applicant their visa application was received when it had been discarded.
+    const userId = session?.user?.id
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Please create an account or sign in so we can save and track your application." },
+        { status: 401 },
+      )
+    }
+
     const body = await req.json()
 
     const {
@@ -16,12 +28,6 @@ export async function POST(req: NextRequest) {
 
     if (!fullName || !nationality || !passportNumber || !phone || !contactEmail || !purpose) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
-    }
-
-    const userId = session?.user?.id ?? null
-
-    if (!userId) {
-      return NextResponse.json({ success: true, message: "Application received" })
     }
 
     const app = await db.visaApplication.create({

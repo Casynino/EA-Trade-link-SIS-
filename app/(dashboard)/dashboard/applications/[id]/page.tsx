@@ -38,6 +38,8 @@ function fmt(d?: Date | string | null) {
 interface NormApp {
   id: string
   modelType: "application" | "visa" | "study" | "scholarship"
+  /** The Opportunity this application targets (Flow B). Distinct from `id`. */
+  opportunityId?: string
   title: string
   subtitle: string
   status: string
@@ -80,6 +82,9 @@ async function findApp(id: string, userId: string): Promise<NormApp | null> {
   })
   if (a) return {
     id: a.id, modelType: "application",
+    // Needed for links back to the opportunity — the application id is NOT an
+    // opportunity id, and /apply/[id] and /opportunities/[id] both expect the latter.
+    opportunityId: a.opportunityId,
     title: a.opportunity.title,
     subtitle: `${a.opportunity.organization} · ${a.opportunity.location}`,
     status: a.status, createdAt: a.createdAt,
@@ -503,8 +508,8 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
             <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
             Back to Applications
           </Link>
-          {app.status === "SUBMITTED" && app.modelType === "application" && (
-            <Link href={`/apply/${app.id}?edit=true`}
+          {app.status === "SUBMITTED" && app.modelType === "application" && app.opportunityId && (
+            <Link href={`/apply/${app.opportunityId}?edit=true`}
               className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all hover:opacity-90"
               style={{ background: "rgba(96,165,250,0.1)", color: "#60a5fa", border: "1px solid rgba(96,165,250,0.2)" }}>
               <Edit3 className="h-3.5 w-3.5" /> Edit Application
