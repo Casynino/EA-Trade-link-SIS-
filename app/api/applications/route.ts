@@ -24,11 +24,6 @@ export async function POST(req: Request) {
   const opp = await db.opportunity.findUnique({ where: { id: parsed.data.opportunityId } })
   if (!opp) return NextResponse.json({ error: "Opportunity not found" }, { status: 404 })
 
-  const existing = await db.application.findFirst({
-    where: { userId: session.user.id, opportunityId: parsed.data.opportunityId },
-  })
-  if (existing) return NextResponse.json({ error: "Already applied" }, { status: 409 })
-
   const application = await db.application.create({
     data: {
       userId:        session.user.id,
