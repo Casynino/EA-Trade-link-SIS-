@@ -1,5 +1,5 @@
 import { db } from "@/lib/db"
-import { auth } from "@/lib/auth"
+import { requireAdminApi } from "@/lib/role-guard"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
@@ -9,8 +9,8 @@ const schema = z.object({
 })
 
 export async function POST(req: Request) {
-  const session = await auth()
-  if (!session || !["ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
+  const admin = await requireAdminApi()
+  if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
@@ -22,13 +22,13 @@ export async function POST(req: Request) {
     data: {
       rmbToTzs: parsed.data.rmbToTzs,
       tzsToRmb: parsed.data.tzsToRmb,
-      updatedBy: session.user.id,
+      updatedBy: admin.id,
     },
   })
 
   await db.activityLog.create({
     data: {
-      userId: session.user.id,
+      userId: admin.id,
       action: "UPDATE_EXCHANGE_RATES",
       entityType: "ExchangeRate",
       entityId: rate.id,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { auth } from "@/lib/auth"
+import { requireAdminApi } from "@/lib/role-guard"
 
 function parseScholarship(row: Record<string, unknown>): Record<string, unknown> {
   return {
@@ -100,8 +100,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session || !["ADMIN", "SUPER_ADMIN"].includes(session.user.role ?? "")) {
+  const admin = await requireAdminApi()
+  if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
@@ -164,8 +164,8 @@ export async function POST(req: NextRequest) {
 
 // PUT /api/scholarships — bulk sync all scholarships → Opportunity table
 export async function PUT(req: NextRequest) {
-  const session = await auth()
-  if (!session || !["ADMIN", "SUPER_ADMIN"].includes(session.user.role ?? "")) {
+  const admin = await requireAdminApi()
+  if (!admin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
