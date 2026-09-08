@@ -65,27 +65,20 @@ export function UpdateNotifier() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed top-4 left-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 sm:w-auto"
+      className="fixed top-3 left-1/2 z-[100] max-w-[calc(100%-1.5rem)] -translate-x-1/2"
     >
       <div
-        className="flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl backdrop-blur-xl"
+        className="flex items-center gap-2 rounded-full py-1.5 pl-3 pr-1.5 backdrop-blur-xl"
         style={{
-          background: "rgba(14, 20, 42, 0.94)",
-          border: "1px solid rgba(212, 175, 55, 0.35)",
-          boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
-          animation: "ea-update-in 260ms cubic-bezier(0.22, 1, 0.36, 1)",
+          background: "rgba(14, 20, 42, 0.95)",
+          border: "1px solid rgba(212, 175, 55, 0.3)",
+          boxShadow: "0 6px 22px rgba(0,0,0,0.45)",
+          animation: "ea-update-in 240ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
-        <div
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: "rgba(212,175,55,0.14)" }}
-        >
-          <RefreshCw className="h-4 w-4" style={{ color: "#D4AF37" }} />
-        </div>
+        <RefreshCw className="h-3 w-3 shrink-0" style={{ color: "#D4AF37" }} />
 
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold leading-tight text-white">New update is up</p>
-        </div>
+        <p className="whitespace-nowrap text-xs font-semibold text-white">New update is up</p>
 
         <button
           onClick={() => {
@@ -95,20 +88,20 @@ export function UpdateNotifier() {
             setTimeout(() => window.location.reload(), 150)
           }}
           disabled={reloading}
-          className="flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-black transition-all hover:scale-105 disabled:opacity-70 disabled:hover:scale-100"
+          className="flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-70"
           style={{ background: "#D4AF37", color: "#05091a" }}
         >
           {reloading ? "Updating" : "Update now"}
-          {reloading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          {reloading && <Loader2 className="h-3 w-3 animate-spin" />}
         </button>
 
         <button
           onClick={() => setDismissed(true)}
           aria-label="Dismiss update notice"
-          className="shrink-0 rounded-lg p-1 transition-colors hover:bg-white/10"
-          style={{ color: "rgba(255,255,255,0.35)" }}
+          className="shrink-0 rounded-full p-0.5 transition-colors hover:bg-white/10"
+          style={{ color: "rgba(255,255,255,0.3)" }}
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-3 w-3" />
         </button>
       </div>
 
