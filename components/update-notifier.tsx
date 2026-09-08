@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Loader2, RefreshCw, X } from "lucide-react"
+import { RefreshCw, X } from "lucide-react"
 
 /** How often to ask the server which build is live. */
 const POLL_MS = 60_000
@@ -76,23 +76,22 @@ export function UpdateNotifier() {
           animation: "ea-update-in 240ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
-        <RefreshCw className="h-2.5 w-2.5 shrink-0" style={{ color: "#D4AF37" }} />
-
         <p className="whitespace-nowrap text-[11px] font-semibold text-white">New update is up</p>
 
         <button
           onClick={() => {
             setReloading(true)
-            // Give React a frame to paint the spinner — reloading synchronously
-            // can tear down the page before the loading state is ever seen.
+            // Give React a frame to paint the spinning state — reloading
+            // synchronously tears the page down before it is ever seen.
             setTimeout(() => window.location.reload(), 150)
           }}
           disabled={reloading}
-          className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold transition-all hover:brightness-110 disabled:opacity-70"
+          aria-label={reloading ? "Updating" : "Update now"}
+          title={reloading ? "Updating" : "Update now"}
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full transition-all hover:brightness-110 disabled:opacity-70"
           style={{ background: "#D4AF37", color: "#05091a" }}
         >
-          {reloading ? "Updating" : "Update now"}
-          {reloading && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+          <RefreshCw className={`h-3 w-3 ${reloading ? "animate-spin" : ""}`} />
         </button>
 
         <button
