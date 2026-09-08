@@ -65,10 +65,10 @@ export function UpdateNotifier() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed top-3 left-1/2 z-[100] max-w-[calc(100%-1.5rem)] -translate-x-1/2"
+      className="fixed top-2.5 left-1/2 z-[100] max-w-[calc(100%-1.5rem)] -translate-x-1/2"
     >
       <div
-        className="flex items-center gap-2 rounded-full py-1.5 pl-3 pr-1.5 backdrop-blur-xl"
+        className="flex items-center gap-1.5 rounded-full py-1 pl-2.5 pr-1 backdrop-blur-xl"
         style={{
           background: "rgba(14, 20, 42, 0.95)",
           border: "1px solid rgba(212, 175, 55, 0.3)",
@@ -76,9 +76,9 @@ export function UpdateNotifier() {
           animation: "ea-update-in 240ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
-        <RefreshCw className="h-3 w-3 shrink-0" style={{ color: "#D4AF37" }} />
+        <RefreshCw className="h-2.5 w-2.5 shrink-0" style={{ color: "#D4AF37" }} />
 
-        <p className="whitespace-nowrap text-xs font-semibold text-white">New update is up</p>
+        <p className="whitespace-nowrap text-[11px] font-semibold text-white">New update is up</p>
 
         <button
           onClick={() => {
@@ -88,11 +88,11 @@ export function UpdateNotifier() {
             setTimeout(() => window.location.reload(), 150)
           }}
           disabled={reloading}
-          className="flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all hover:brightness-110 disabled:opacity-70"
+          className="flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold transition-all hover:brightness-110 disabled:opacity-70"
           style={{ background: "#D4AF37", color: "#05091a" }}
         >
           {reloading ? "Updating" : "Update now"}
-          {reloading && <Loader2 className="h-3 w-3 animate-spin" />}
+          {reloading && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
         </button>
 
         <button
@@ -101,7 +101,7 @@ export function UpdateNotifier() {
           className="shrink-0 rounded-full p-0.5 transition-colors hover:bg-white/10"
           style={{ color: "rgba(255,255,255,0.3)" }}
         >
-          <X className="h-3 w-3" />
+          <X className="h-2.5 w-2.5" />
         </button>
       </div>
 
