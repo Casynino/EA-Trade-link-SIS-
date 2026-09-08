@@ -3,6 +3,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import { SessionProvider } from "@/components/providers/session-provider"
+import { UpdateNotifier } from "@/components/update-notifier"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -27,6 +28,7 @@ export default function RootLayout({
         <SessionProvider>
           {children}
           <Toaster />
+          <UpdateNotifier />
         </SessionProvider>
       </body>
     </html>
