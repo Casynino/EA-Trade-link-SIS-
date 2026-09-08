@@ -65,7 +65,7 @@ export function UpdateNotifier() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-5 left-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 sm:left-auto sm:right-5 sm:w-auto sm:translate-x-0"
+      className="fixed top-4 left-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 sm:w-auto"
     >
       <div
         className="flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl backdrop-blur-xl"
@@ -114,7 +114,7 @@ export function UpdateNotifier() {
 
       <style>{`
         @keyframes ea-update-in {
-          from { opacity: 0; transform: translateY(12px); }
+          from { opacity: 0; transform: translateY(-12px); }
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
